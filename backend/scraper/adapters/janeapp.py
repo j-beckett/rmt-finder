@@ -1,10 +1,10 @@
 import re
 import json
 import html
-import requests
 from datetime import datetime, timedelta, timezone
 from .base import BaseAdapter
 from ..models import AvailabilityResult, ServiceType
+from ..web_client import make_session
 from config import LOOKAHEAD_HOURS
 
 
@@ -14,6 +14,7 @@ SERVICE_TYPE_KEYWORDS = {
     ServiceType.PHYSIOTHERAPY: ["physiotherapist", "physiotherapy"],
 }
 
+
 class JaneAppAdapter(BaseAdapter):
 
     def _extract_js_object(self, text: str, start_pattern: str) -> str | None:
@@ -22,7 +23,7 @@ class JaneAppAdapter(BaseAdapter):
         if not start_match:
             return None
 
-        start = start_match.end() - 1  # position of opening {
+        start = start_match.end() - 1
         depth = 0
         in_string = False
         escape_next = False
@@ -48,26 +49,19 @@ class JaneAppAdapter(BaseAdapter):
         return None
 
 
-    HEADERS = {
-        "User-Agent": (
-            "Mozilla/5.0 (Windows NT 10.0; Win64; x64) "
-            "AppleWebKit/537.36 (KHTML, like Gecko) "
-            "Chrome/124.0.0.0 Safari/537.36"
-        ),
-        "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
-        "Accept-Language": "en-CA,en;q=0.9",
-    }
-
     def _fetch_router_options(self, clinic) -> dict:
         url = f"https://{clinic.subdomain}.janeapp.com"
-        self._session = requests.Session()
-        self._session.headers.update(self.HEADERS)
+
+        # Create a session and store it so _fetch_openings can reuse it
+        # Jane sets cookies on the homepage that the API requires
+        self._session = make_session()
         response = self._session.get(url)
 
         if response.status_code != 200:
             print(f"Failed to fetch {clinic.name}: {response.status_code}")
             return {}
 
+        # Count curly braces to extract the complete routerOptions object
         raw = self._extract_js_object(
             response.text,
             r'const routerOptions\s*=\s*\{'
@@ -157,8 +151,11 @@ class JaneAppAdapter(BaseAdapter):
             f"&num_days=2"
         )
 
-        session = getattr(self, '_session', requests)
-        response = session.get(url, headers={"Referer": f"https://{clinic.subdomain}.janeapp.com"})
+        # Reuse the session from _fetch_router_options so cookies are preserved
+        response = self._session.get(
+            url,
+            headers={"Referer": f"https://{clinic.subdomain}.janeapp.com"}
+        )
 
         if response.status_code != 200:
             print(f"    Openings API {response.status_code} for treatment {treatment['treatment_id']}")
