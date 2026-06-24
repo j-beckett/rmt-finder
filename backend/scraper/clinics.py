@@ -1,22 +1,39 @@
+from dataclasses import dataclass, field
+from enum import Enum
+from .models import ServiceType
+
+
+class Platform(Enum):
+    JANEAPP = "janeapp"
+    MINDBODY = "mindbody"
+
+
+@dataclass
+class ClinicConfig:
+    name: str
+    city: str
+    platform: Platform
+    services: list[dict]
+
+
+@dataclass
+class JaneAppConfig(ClinicConfig):
+    subdomain: str = ""
+
+
+@dataclass
+class MindbodyConfig(ClinicConfig):
+    studio_id: str = ""
+
+
 CLINICS = [
-    # {
-    #     "name": "Solace Massage Therapy",
-    #     "subdomain": "solacemassagevictoria",
-    #     "location_slug": "solace-massage-therapy",
-    # },
-    # {
-    #     "name": "ViVi Therapy",
-    #     "subdomain": "vivitherapy",
-    #     "location_slug": "vivi-therapy",
-    # },
-    # {
-    #     "name": "Remedy Wellness Centre",
-    #     "subdomain": "remedywellnesscentre",
-    #     "location_slug": "remedy-wellness-centre",
-    # },
-    {
-        "name": "Geometry",
-        "subdomain": "geometry",
-        "location_slug": "geometry",
-    },
+    JaneAppConfig(
+        name="Geometry",
+        city="victoria",
+        platform=Platform.JANEAPP,
+        subdomain="geometry",
+        services=[
+            {"type": ServiceType.MASSAGE_THERAPY, "durations": [60]}
+        ]
+    ),
 ]

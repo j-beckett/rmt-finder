@@ -1,26 +1,46 @@
 import json
 import os
-from datetime import date
-from scraper.scraper import run_all
+from datetime import datetime, timezone
+from scraper.runner import run_all
+from scraper.models import ServiceType
 
 
 def main():
     print("Starting RMT availability scrape...")
-    results = run_all()
+    results = run_all(city="victoria")
 
     if not results:
-        print("No availability found for today.")
+        print("No availability found in the next 24 hours.")
         return
 
-    print(f"\nFound {len(results)} available slot(s) for today ({date.today().isoformat()}):\n")
+    print(f"\nFound {len(results)} slot(s) in the next 24 hours:\n")
+
     for r in results:
-        print(f"  {r['clinic']} — {r['rmt']} ({r['status']})")
-        print(f"  Book: {r['booking_url']}\n")
+        print(f"  {r.clinic_name} — {r.rmt_name}")
+        print(f"  {r.service_type.value} | {r.duration_minutes} min | {r.start_at}")
+        print(f"  Book: {r.booking_url}\n")
 
     os.makedirs("data", exist_ok=True)
-    filename = f"data/{date.today().isoformat()}.json"
+    filename = f"data/{datetime.now(timezone.utc).strftime('%Y-%m-%dT%H-%M-%S')}.json"
+
     with open(filename, "w") as f:
-        json.dump(results, f, indent=2)
+        json.dump(
+            [
+                {
+                    "clinic": r.clinic_name,
+                    "city": r.city,
+                    "platform": r.platform,
+                    "rmt": r.rmt_name,
+                    "service": r.service_type.value,
+                    "duration_minutes": r.duration_minutes,
+                    "start_at": r.start_at,
+                    "booking_url": r.booking_url,
+                }
+                for r in results
+            ],
+            f,
+            indent=2,
+        )
 
     print(f"Results saved to {filename}")
 
