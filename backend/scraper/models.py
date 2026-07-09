@@ -15,6 +15,7 @@ class AvailabilityResult:
     platform: str
     rmt_name: str
     service_type: ServiceType
+    treatment_name: str
     duration_minutes: int
     start_at: str
     booking_url: str

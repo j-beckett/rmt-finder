@@ -47,13 +47,12 @@ class JaneAppAdapter(BaseAdapter):
 
         return None
 
-    def _fetch_router_options(self, clinic) -> dict:
+    def _fetch_router_options(self, clinic, session) -> dict:
         url = f"https://{clinic.subdomain}.janeapp.com"
 
-        # Create a session and store it so _fetch_openings can reuse it
-        # Jane sets cookies on the homepage that the API requires
-        self._session = make_session()
-        response = self._session.get(url)
+        # Jane sets cookies on the homepage that the openings API requires,
+        # so the same session must be used for every request to this clinic
+        response = session.get(url)
 
         if response.status_code != 200:
             print(f"Failed to fetch {clinic.name}: {response.status_code}")
@@ -61,6 +60,28 @@ class JaneAppAdapter(BaseAdapter):
 
         # Count curly braces to extract the complete routerOptions object
         raw = self._extract_js_object(response.text, r"const routerOptions\s*=\s*\{")
+
+        if not raw:
+            # Some clinics only embed routerOptions on a location booking page
+            location_paths = re.findall(
+                r'href="(/locations/[^#"]+/book)"', response.text
+            )
+            unique_paths = list(dict.fromkeys(location_paths))
+
+            for path in unique_paths[:3]:
+                location_url = f"https://{clinic.subdomain}.janeapp.com{path}"
+                print(f"  Trying location path: {location_url}")
+                location_response = session.get(location_url)
+
+                if location_response.status_code != 200:
+                    continue
+
+                raw = self._extract_js_object(
+                    location_response.text, r"const routerOptions\s*=\s*\{"
+                )
+
+                if raw:
+                    break
 
         if not raw:
             print(f"Could not find routerOptions for {clinic.name}")
@@ -118,6 +139,7 @@ class JaneAppAdapter(BaseAdapter):
                     "treatment_id": t["id"],
                     "discipline_id": t["discipline_id"],
                     "duration_minutes": t["treatment_duration"] // 60,
+                    "name": t["name"],
                 }
                 for t in treatments
                 if t["discipline_id"] in matching_discipline_ids
@@ -153,7 +175,7 @@ class JaneAppAdapter(BaseAdapter):
             return False
 
     def _fetch_openings(
-        self, clinic, service_type, treatment, staff_lookup
+        self, clinic, service_type, treatment, staff_lookup, session
     ) -> list[AvailabilityResult]:
         """Query the Jane openings API for a single treatment and return results."""
         url = (
@@ -165,8 +187,11 @@ class JaneAppAdapter(BaseAdapter):
             f"&num_days=2"
         )
 
-        # Reuse the session from _fetch_router_options so cookies are preserved
-        response = self._session.get(
+        # TODO: openings API has been observed returning an empty list on some
+        # requests for a treatment that has openings moments later (e.g.
+        # Equilibrium Massage Therapy). Look into whether this is rate
+        # limiting, caching, or something else before adding a retry.
+        response = session.get(
             url, headers={"Referer": f"https://{clinic.subdomain}.janeapp.com"}
         )
 
@@ -199,6 +224,7 @@ class JaneAppAdapter(BaseAdapter):
                     platform="janeapp",
                     rmt_name=staff_lookup.get(staff_id, "Unknown"),
                     service_type=service_type,
+                    treatment_name=treatment["name"],
                     duration_minutes=treatment["duration_minutes"],
                     start_at=start_at,
                     booking_url=f"https://{clinic.subdomain}.janeapp.com",
@@ -207,9 +233,9 @@ class JaneAppAdapter(BaseAdapter):
 
         return results
 
-    def discover(self, clinic) -> dict:
+    def discover(self, clinic, session) -> dict:
         """Discover Jane-specific IDs needed to query availability."""
-        router = self._fetch_router_options(clinic)
+        router = self._fetch_router_options(clinic, session)
 
         if not router:
             return {}
@@ -233,7 +259,11 @@ class JaneAppAdapter(BaseAdapter):
 
     def fetch_availability(self, clinic) -> list[AvailabilityResult]:
         """Fetch all available slots for a clinic within the lookahead window."""
-        discovered = self.discover(clinic)
+        # One session per clinic scrape: Jane's cookies are per subdomain,
+        # and keeping the session out of adapter state keeps the adapter
+        # safe to share across clinics (and threads, if we ever parallelize)
+        session = make_session()
+        discovered = self.discover(clinic, session)
 
         if not discovered:
             return []
@@ -248,6 +278,7 @@ class JaneAppAdapter(BaseAdapter):
                         service_type,
                         treatment,
                         discovered["staff_lookup"],
+                        session,
                     )
                 )
 

@@ -17,7 +17,7 @@ def main():
 
     for r in results:
         print(f"  {r.clinic_name} — {r.rmt_name}")
-        print(f"  {r.service_type.value} | {r.duration_minutes} min | {r.start_at}")
+        print(f"  {r.treatment_name} | {r.duration_minutes} min | {r.start_at}")
         print(f"  Book: {r.booking_url}\n")
 
     os.makedirs("data", exist_ok=True)
@@ -32,6 +32,7 @@ def main():
                     "platform": r.platform,
                     "rmt": r.rmt_name,
                     "service": r.service_type.value,
+                    "treatment_name": r.treatment_name,
                     "duration_minutes": r.duration_minutes,
                     "start_at": r.start_at,
                     "booking_url": r.booking_url,

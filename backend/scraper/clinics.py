@@ -57,10 +57,28 @@ EXCLUDED_TREATMENT_KEYWORDS = [
     "abhyanga",
     "ayurveda",
     "tui na",
+    "detox",
+    "face",
+    "therapeutic exercise",
+    "stretch therapy",
 ]
 
 
-def jane_rmt(name: str, subdomain: str, city: str = "victoria") -> JaneAppConfig:
+def jane_rmt(
+    name: str,
+    subdomain: str,
+    city: str = "victoria",
+    discipline_names: list[str] = None,
+    extra_excludes: list[str] = None,
+) -> JaneAppConfig:
+    """Build a Jane massage-therapy clinic config.
+
+    Most clinics use the defaults. `discipline_names` overrides which Jane
+    discipline(s) count as massage therapy (e.g. a clinic that names its
+    discipline just "Massage" instead of "Massage Therapy"). `extra_excludes`
+    adds clinic-specific treatment-name exclusions on top of the shared list
+    (e.g. "non-registered" for a clinic that mixes RMT and non-RMT massage).
+    """
     return JaneAppConfig(
         name=name,
         city=city,
@@ -70,8 +88,10 @@ def jane_rmt(name: str, subdomain: str, city: str = "victoria") -> JaneAppConfig
             {
                 "type": ServiceType.MASSAGE_THERAPY,
                 "durations": DEFAULT_DURATIONS,
-                "discipline_names": DEFAULT_DISCIPLINE_NAMES,
-                "exclude_treatment_keywords": EXCLUDED_TREATMENT_KEYWORDS,
+                "discipline_names": discipline_names or DEFAULT_DISCIPLINE_NAMES,
+                "exclude_treatment_keywords": (
+                    EXCLUDED_TREATMENT_KEYWORDS + (extra_excludes or [])
+                ),
             }
         ],
     )
@@ -94,9 +114,34 @@ CLINICS = [
     jane_rmt("Reach Health", "reachhealth"),
     jane_rmt("Renew Health", "renew"),
     jane_rmt("A Balanced Body", "abalancedbody"),
+    jane_rmt("Vitality Treatment Centre", "vitalitytreatment"),
+    # Testing the /locations/ fallback
+    jane_rmt("Tall Tree Health", "talltreehealthjamesbay"),
+    jane_rmt("Massage Therapy Group", "massagetherapygroup"),
+    jane_rmt("Equilibrium Massage Therapy", "equilibriummassagetherapy"),
+    jane_rmt("Victoria Massage Therapy", "victoriamassagetherapy"),
+    # Added 2026-07-09 after web search + location verification
+    jane_rmt("Infinity Massage and Acupuncture", "infinitymassage"),
+    jane_rmt("Optimal Health Massage Therapy", "optimalhealthmassage"),
+    jane_rmt("Glow Integrative Clinic", "glowintegrative"),
+    jane_rmt("Heart of the Village Massage Therapy", "heartofthevillagemassagetherapy"),
+    # Names its discipline just "Massage" (not "Massage Therapy") and sells
+    # non-RMT massage under it, so it needs a per-clinic override.
+    jane_rmt(
+        "Victoria Centre Acupuncture and Massage",
+        "vcaspa",
+        discipline_names=["Massage"],
+        extra_excludes=["non-registered", "certified massage"],
+    ),
     # Needs investigation
-    # jane_rmt("Tall Tree Health", "talltreehealthjamesbay"), needs better location filter
-    # jane_rmt("Massotherapy Group", "massotherapygroup"),
     # jane_rmt("Solace Massage", "solacemassagevictoria"), dupes
-    # New ones to test
+    # Deliberately excluded — WCCMT public intern clinic. Treatments are
+    # provided by student interns supervised by RMT instructors, not by RMTs
+    # themselves, so it doesn't fit an "RMT availability" tool.
+    # jane_rmt("WCCMT Victoria Intern Clinic", "victoriacollegeofmassage"),
+    # Deliberately excluded — not a walk-in clinic, so results wouldn't be
+    # useful even if scraped correctly. Only treatments are mobile/hotel
+    # visits (e.g. "60min HOTEL RMT Massage", "...at a Partnered Location").
+    # Revisit if we ever want to support mobile/in-home appointments.
+    # jane_rmt("Compass Massage", "compassmassage"),
 ]

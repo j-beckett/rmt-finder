@@ -15,11 +15,15 @@ class BaseAdapter(ABC):
         pass
 
     @abstractmethod
-    def discover(self, clinic) -> dict:
+    def discover(self, clinic, session) -> dict:
         """
-        Given a clinic config, discover the platform-specific IDs
-        needed to query availability (e.g. discipline_id, treatment_id
-        for Jane App).
+        Given a clinic config and an HTTP session, discover the
+        platform-specific IDs needed to query availability
+        (e.g. discipline_id, treatment_id for Jane App).
+
+        The session is created once per clinic scrape and passed down
+        so cookies persist across requests to the same clinic, and so
+        adapters stay stateless (safe to share across clinics).
 
         Returns a dict of whatever the adapter needs internally.
         Every adapter must implement this method.
