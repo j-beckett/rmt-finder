@@ -16,3 +16,15 @@ def test_db_path_reads_env_var(monkeypatch):
     monkeypatch.setenv("RMT_FINDER_DB_PATH", "C:/somewhere/else.db")
 
     assert config.db_path() == "C:/somewhere/else.db"
+
+
+def test_frontend_origin_defaults_to_vite_dev_server(monkeypatch):
+    monkeypatch.delenv("RMT_FINDER_FRONTEND_ORIGIN", raising=False)
+
+    assert config.frontend_origin() == "http://localhost:5173"
+
+
+def test_frontend_origin_reads_env_var(monkeypatch):
+    monkeypatch.setenv("RMT_FINDER_FRONTEND_ORIGIN", "https://rmt.example.com")
+
+    assert config.frontend_origin() == "https://rmt.example.com"
