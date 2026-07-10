@@ -2,6 +2,8 @@
 
 **Type:** AFK
 
+**Done in `74b9ce3`.**
+
 ## Parent PRD
 
 `docs/prd/vertical-slice.md`
@@ -25,17 +27,17 @@ Demoable with curl against a database populated by the scrape CLI.
 
 ## Acceptance criteria
 
-- [ ] `GET /api/availability` returns the latest good run's slots with the
+- [x] `GET /api/availability` returns the latest good run's slots with the
       full envelope
-- [ ] When the latest attempt had zero successes, the response serves the
+- [x] When the latest attempt had zero successes, the response serves the
       most recent good run and the envelope's latest-attempt timestamp is
       newer than the served `scraped_at`
-- [ ] Empty-but-successful run returns an empty slot list with a normal
+- [x] Empty-but-successful run returns an empty slot list with a normal
       envelope (distinguishable from the fallback case)
-- [ ] City query param accepted; no POST routes, no auth, no pagination
-- [ ] CORS permits the frontend dev origin
-- [ ] All data access goes through the storage module
-- [ ] TestClient tests (written first): normal, empty, envelope contents,
+- [x] City query param accepted; no POST routes, no auth, no pagination
+- [x] CORS permits the frontend dev origin
+- [x] All data access goes through the storage module
+- [x] TestClient tests (written first): normal, empty, envelope contents,
       fallback; `pytest` passes
 
 ## Blocked by
