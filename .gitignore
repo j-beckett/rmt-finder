@@ -1,0 +1,23 @@
+# Python
+venv/
+__pycache__/
+*.pyc
+*.pyo
+.env
+.pytest_cache/
+
+# Data output
+data/
+
+#folder for random debug files
+temp/
+
+# local scratch notes, not part of the project
+NOTES.md
+
+# VS Code
+.vscode/
+
+# OS
+.DS_Store
+Thumbs.db.claude/settings.local.json
