@@ -1,49 +1,33 @@
-import json
-import os
 from datetime import datetime, timezone
+
+import config
 from scraper.runner import run_all
-from scraper.models import ServiceType
+from storage import Storage
 
 
 def main():
     print("Starting RMT availability scrape...")
-    results = run_all(city="victoria")
+    started_at = datetime.now(timezone.utc).isoformat()
+    result = run_all(city="victoria")
+    finished_at = datetime.now(timezone.utc).isoformat()
 
-    if not results:
-        print("No availability found in the next 24 hours.")
-        return
+    storage = Storage(config.db_path())
+    run_id = storage.record_run(
+        started_at=started_at,
+        finished_at=finished_at,
+        attempted=len(result.attempted),
+        succeeded=len(result.succeeded),
+        failed_clinics=result.failed,
+    )
+    storage.insert_slots(run_id, result.slots)
 
-    print(f"\nFound {len(results)} slot(s) in the next 24 hours:\n")
-
-    for r in results:
-        print(f"  {r.clinic_name} — {r.rmt_name}")
-        print(f"  {r.treatment_name} | {r.duration_minutes} min | {r.start_at}")
-        print(f"  Book: {r.booking_url}\n")
-
-    os.makedirs("data", exist_ok=True)
-    filename = f"data/{datetime.now(timezone.utc).strftime('%Y-%m-%dT%H-%M-%S')}.json"
-
-    with open(filename, "w") as f:
-        json.dump(
-            [
-                {
-                    "clinic": r.clinic_name,
-                    "city": r.city,
-                    "platform": r.platform,
-                    "rmt": r.rmt_name,
-                    "service": r.service_type.value,
-                    "treatment_name": r.treatment_name,
-                    "duration_minutes": r.duration_minutes,
-                    "start_at": r.start_at,
-                    "booking_url": r.booking_url,
-                }
-                for r in results
-            ],
-            f,
-            indent=2,
-        )
-
-    print(f"Results saved to {filename}")
+    print(
+        f"\nRun {run_id}: {len(result.attempted)} clinics attempted,"
+        f" {len(result.succeeded)} succeeded, {len(result.failed)} failed"
+    )
+    if result.failed:
+        print(f"Failed clinics: {', '.join(result.failed)}")
+    print(f"{len(result.slots)} slot(s) recorded")
 
 
 if __name__ == "__main__":

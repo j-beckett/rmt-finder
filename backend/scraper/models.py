@@ -19,3 +19,13 @@ class AvailabilityResult:
     duration_minutes: int
     start_at: str
     booking_url: str
+
+
+@dataclass
+class RunResult:
+    """Outcome of one scrape run: per-clinic results plus the slots found."""
+
+    slots: list[AvailabilityResult]
+    attempted: list[str]
+    succeeded: list[str]
+    failed: list[str]

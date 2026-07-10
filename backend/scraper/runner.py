@@ -1,6 +1,6 @@
 from .adapters.janeapp import JaneAppAdapter
 from .clinics import CLINICS, Platform
-from .models import AvailabilityResult
+from .models import RunResult
 
 
 ADAPTERS = {
@@ -8,33 +8,38 @@ ADAPTERS = {
 }
 
 
-def run_all(city: str = None) -> list[AvailabilityResult]:
+def run_all(city: str = None, clinics=None, adapters=None) -> RunResult:
     """
-    Run all clinic scrapers and return normalized results.
-    Optionally filter by city.
+    Run all clinic scrapers and return per-clinic outcomes plus the
+    normalized slots. Optionally filter by city.
     """
-    clinics = CLINICS
+    if clinics is None:
+        clinics = CLINICS
+    if adapters is None:
+        adapters = ADAPTERS
 
     if city:
-        clinics = [c for c in CLINICS if c.city.lower() == city.lower()]
+        clinics = [c for c in clinics if c.city.lower() == city.lower()]
 
-    results = []
+    result = RunResult(slots=[], attempted=[], succeeded=[], failed=[])
 
     for clinic in clinics:
-        adapter = ADAPTERS.get(clinic.platform)
+        adapter = adapters.get(clinic.platform)
 
         if not adapter:
             print(f"No adapter found for platform: {clinic.platform}")
             continue
 
+        result.attempted.append(clinic.name)
         print(f"Scraping {clinic.name}...")
 
         try:
             clinic_results = adapter.fetch_availability(clinic)
-            results.extend(clinic_results)
+            result.slots.extend(clinic_results)
+            result.succeeded.append(clinic.name)
             print(f"  Found {len(clinic_results)} slot(s)")
         except Exception as e:
+            result.failed.append(clinic.name)
             print(f"  Error scraping {clinic.name}: {e}")
-            continue
 
-    return results
+    return result
