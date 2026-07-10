@@ -20,4 +20,7 @@ NOTES.md
 
 # OS
 .DS_Store
-Thumbs.db.claude/settings.local.json
+Thumbs.db
+
+# Claude Code local settings (per-machine)
+.claude/settings.local.json
