@@ -2,6 +2,10 @@
 
 **Type:** AFK
 
+**Done in `7e115ae`** (2026-07-09). Implementation plan:
+`docs/plans/scrape-to-sqlite.md`. Verified with a real run: 24/24 clinics,
+19 slots recorded, no JSON written.
+
 ## Parent PRD
 
 `docs/prd/vertical-slice.md`
@@ -28,18 +32,19 @@ Storage tests are written test-first against temporary SQLite databases.
 
 ## Acceptance criteria
 
-- [ ] Running the CLI once creates/updates the SQLite DB with one new
+- [x] Running the CLI once creates/updates the SQLite DB with one new
       `scrape_runs` row and its `slots` rows (append-only: reruns add rows,
       never modify existing ones)
-- [ ] The run row records started/finished timestamps, clinics
+- [x] The run row records started/finished timestamps, clinics
       attempted/succeeded, and which clinics failed
-- [ ] Slot rows carry clinic name, city, platform, RMT name, service type,
+- [x] Slot rows carry clinic name, city, platform, RMT name, service type,
       treatment name, duration, start time (ISO with offset), booking URL,
       and the run FK
-- [ ] The CLI prints the run summary; no JSON file is written
-- [ ] No code outside the storage module touches the database
-- [ ] DB path configurable via env var, defaults sensibly
-- [ ] Storage tests (written first) cover schema init, run recording, slot
+- [x] The CLI prints the run summary; no JSON file is written
+- [x] No code outside the storage module touches the database
+- [x] DB path configurable via env var, defaults sensibly (anchored to the
+      repo root, so it resolves the same file from any working directory)
+- [x] Storage tests (written first) cover schema init, run recording, slot
       insertion, latest-good-run reads incl. zero-success fallback; `pytest`
       passes
 
