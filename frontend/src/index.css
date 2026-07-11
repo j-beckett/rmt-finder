@@ -1,0 +1,8 @@
+@import "tailwindcss";
+
+/* Plain light page until slice 05 lands the real visual identity. */
+html {
+  background-color: white;
+  color: #111827;
+  color-scheme: light;
+}

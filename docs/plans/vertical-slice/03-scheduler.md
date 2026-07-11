@@ -2,6 +2,8 @@
 
 **Type:** AFK
 
+**Done in `528a8fc`** (default interval restored to 15 in a follow-up fix).
+
 ## Parent PRD
 
 `docs/prd/vertical-slice.md`
@@ -23,12 +25,12 @@ Demoable by running it and watching consecutive run rows land in SQLite.
 
 ## Acceptance criteria
 
-- [ ] Starting the scheduler triggers a scrape immediately, then again after
+- [x] Starting the scheduler triggers a scrape immediately, then again after
       each interval
-- [ ] `SCRAPE_INTERVAL_MINUTES` env var respected, defaults to 15
-- [ ] A scrape that raises is logged, recorded as a failed run, and the loop
+- [x] `SCRAPE_INTERVAL_MINUTES` env var respected, defaults to 15
+- [x] A scrape that raises is logged, recorded as a failed run, and the loop
       continues to the next cycle
-- [ ] Scheduler failure-path test (written first): a failing scrape records
+- [x] Scheduler failure-path test (written first): a failing scrape records
       a failed run and does not propagate out of the loop; `pytest` passes
 
 ## Blocked by
