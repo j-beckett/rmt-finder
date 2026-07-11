@@ -28,3 +28,15 @@ def test_frontend_origin_reads_env_var(monkeypatch):
     monkeypatch.setenv("RMT_FINDER_FRONTEND_ORIGIN", "https://rmt.example.com")
 
     assert config.frontend_origin() == "https://rmt.example.com"
+
+
+def test_scrape_interval_defaults_to_15_minutes(monkeypatch):
+    monkeypatch.delenv("SCRAPE_INTERVAL_MINUTES", raising=False)
+
+    assert config.scrape_interval_minutes() == 15
+
+
+def test_scrape_interval_reads_env_var(monkeypatch):
+    monkeypatch.setenv("SCRAPE_INTERVAL_MINUTES", "5")
+
+    assert config.scrape_interval_minutes() == 5
