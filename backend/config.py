@@ -17,7 +17,7 @@ def db_path() -> str:
 
 def scrape_interval_minutes() -> int:
     """Minutes between scheduled scrapes, overridable via SCRAPE_INTERVAL_MINUTES."""
-    return int(os.environ.get("SCRAPE_INTERVAL_MINUTES", "1"))
+    return int(os.environ.get("SCRAPE_INTERVAL_MINUTES", "15"))
 
 
 def frontend_origin() -> str:
