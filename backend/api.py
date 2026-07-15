@@ -1,7 +1,9 @@
+import os
 from dataclasses import asdict
 
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.staticfiles import StaticFiles
 
 import config
 from storage import Storage
@@ -39,3 +41,17 @@ def availability(city: str | None = None):
         "timezone": config.timezone_for_city(city),
         "slots": [_slot_dict(slot) for slot in slots],
     }
+
+
+def mount_frontend(app: FastAPI) -> None:
+    """Serve the built frontend (frontend/dist) from the same origin as the
+    API, so one uvicorn process serves the whole site in production and the
+    browser's /api fetches need no CORS. Skipped when no build exists — dev
+    machines use Vite's dev server instead. Must be called after the /api
+    routes are defined so they win over the "/" mount."""
+    dist = config.frontend_dist_path()
+    if os.path.isdir(dist):
+        app.mount("/", StaticFiles(directory=dist, html=True), name="frontend")
+
+
+mount_frontend(app)

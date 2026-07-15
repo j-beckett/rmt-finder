@@ -30,9 +30,31 @@ def test_run_all_reports_per_clinic_outcomes_alongside_slots():
         jane_rmt("Broken Clinic", "brokenclinic"),
     ]
 
-    result = run_all(clinics=clinics, adapters={Platform.JANEAPP: StubAdapter()})
+    result = run_all(
+        clinics=clinics,
+        adapters={Platform.JANEAPP: StubAdapter()},
+        sleep=lambda seconds: None,
+    )
 
     assert result.attempted == ["Good Clinic", "Broken Clinic"]
     assert result.succeeded == ["Good Clinic"]
     assert result.failed == ["Broken Clinic"]
     assert result.slots == [make_slot("Good Clinic")]
+
+
+def test_run_all_pauses_between_clinics_but_not_before_the_first(monkeypatch):
+    monkeypatch.setenv("INTER_CLINIC_SLEEP_SECONDS", "2.5")
+    clinics = [
+        jane_rmt("Clinic A", "clinica"),
+        jane_rmt("Clinic B", "clinicb"),
+        jane_rmt("Clinic C", "clinicc"),
+    ]
+    sleeps = []
+
+    run_all(
+        clinics=clinics,
+        adapters={Platform.JANEAPP: StubAdapter()},
+        sleep=sleeps.append,
+    )
+
+    assert sleeps == [2.5, 2.5]

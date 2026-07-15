@@ -1,3 +1,4 @@
+from fastapi import FastAPI
 from fastapi.testclient import TestClient
 
 from scraper.models import AvailabilityResult, ServiceType
@@ -129,6 +130,56 @@ def test_city_param_filters_slots_case_insensitively(tmp_path, monkeypatch):
     body = client.get("/api/availability", params={"city": "Victoria"}).json()
 
     assert [slot["city"] for slot in body["slots"]] == ["victoria"]
+
+
+def test_frontend_build_is_served_from_root_when_present(tmp_path, monkeypatch):
+    dist = tmp_path / "dist"
+    dist.mkdir()
+    (dist / "index.html").write_text("<html>rmt finder shell</html>")
+    monkeypatch.setenv("RMT_FINDER_FRONTEND_DIST", str(dist))
+
+    from api import mount_frontend
+
+    app = FastAPI()
+    mount_frontend(app)
+
+    response = TestClient(app).get("/")
+
+    assert response.status_code == 200
+    assert "rmt finder shell" in response.text
+
+
+def test_frontend_mount_is_skipped_when_no_build_exists(tmp_path, monkeypatch):
+    monkeypatch.setenv("RMT_FINDER_FRONTEND_DIST", str(tmp_path / "missing"))
+
+    from api import mount_frontend
+
+    app = FastAPI()
+    mount_frontend(app)
+
+    assert TestClient(app).get("/").status_code == 404
+
+
+def test_api_routes_win_over_the_frontend_mount(tmp_path, monkeypatch):
+    # Same registration order as the real module: route first, mount second.
+    dist = tmp_path / "dist"
+    dist.mkdir()
+    (dist / "index.html").write_text("<html>rmt finder shell</html>")
+    monkeypatch.setenv("RMT_FINDER_FRONTEND_DIST", str(dist))
+
+    from api import mount_frontend
+
+    app = FastAPI()
+
+    @app.get("/api/ping")
+    def ping():
+        return {"ok": True}
+
+    mount_frontend(app)
+    client = TestClient(app)
+
+    assert client.get("/api/ping").json() == {"ok": True}
+    assert "rmt finder shell" in client.get("/").text
 
 
 def test_cors_allows_frontend_dev_origin(tmp_path, monkeypatch):

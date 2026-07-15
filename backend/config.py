@@ -36,9 +36,26 @@ def lookahead_days() -> int:
     return int(os.environ.get("LOOKAHEAD_DAYS", "3"))
 
 
+def inter_clinic_sleep_seconds() -> float:
+    """Courtesy pause between clinic scrapes, via INTER_CLINIC_SLEEP_SECONDS.
+
+    Spaces requests out so a full run never hits Jane's servers
+    back-to-back; 23 clinics at 1.5s adds ~35s to a run, which is nothing
+    against a 15-minute interval.
+    """
+    return float(os.environ.get("INTER_CLINIC_SLEEP_SECONDS", "1.5"))
+
+
 def scrape_interval_minutes() -> int:
     """Minutes between scheduled scrapes, overridable via SCRAPE_INTERVAL_MINUTES."""
     return int(os.environ.get("SCRAPE_INTERVAL_MINUTES", "15"))
+
+
+def frontend_dist_path() -> str:
+    """Built frontend location, overridable via RMT_FINDER_FRONTEND_DIST."""
+    return os.environ.get(
+        "RMT_FINDER_FRONTEND_DIST", os.path.join(_REPO_ROOT, "frontend", "dist")
+    )
 
 
 def frontend_origin() -> str:

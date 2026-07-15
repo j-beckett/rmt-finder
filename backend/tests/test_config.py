@@ -51,6 +51,33 @@ def test_timezone_falls_back_to_default_city_for_unknown_or_none():
     assert config.timezone_for_city("Nowhere") == "America/Vancouver"
 
 
+def test_inter_clinic_sleep_defaults_to_one_and_a_half_seconds(monkeypatch):
+    monkeypatch.delenv("INTER_CLINIC_SLEEP_SECONDS", raising=False)
+
+    assert config.inter_clinic_sleep_seconds() == 1.5
+
+
+def test_inter_clinic_sleep_reads_env_var(monkeypatch):
+    monkeypatch.setenv("INTER_CLINIC_SLEEP_SECONDS", "0")
+
+    assert config.inter_clinic_sleep_seconds() == 0.0
+
+
+def test_frontend_dist_default_is_repo_root_frontend_dist_regardless_of_cwd(
+    monkeypatch, tmp_path
+):
+    monkeypatch.delenv("RMT_FINDER_FRONTEND_DIST", raising=False)
+    monkeypatch.chdir(tmp_path)
+
+    assert config.frontend_dist_path() == os.path.join(REPO_ROOT, "frontend", "dist")
+
+
+def test_frontend_dist_reads_env_var(monkeypatch):
+    monkeypatch.setenv("RMT_FINDER_FRONTEND_DIST", "C:/somewhere/dist")
+
+    assert config.frontend_dist_path() == "C:/somewhere/dist"
+
+
 def test_scrape_interval_defaults_to_15_minutes(monkeypatch):
     monkeypatch.delenv("SCRAPE_INTERVAL_MINUTES", raising=False)
 
