@@ -21,7 +21,7 @@ screenshot-driven. Per the PRD's "Frontend" section:
 - **Failed-latest-check notice** — when the envelope's latest attempt is
   newer than the served run, say the last check failed and show when the
   displayed data is from.
-- **Genuine empty state** — friendly "no availability in the next 24 hours"
+- **Genuine empty state** — friendly "no availability in the next few days"
   message, visually distinct from every error/failure state.
 
 **Visual identity** — warm/wellness direction: warm neutrals, generous

@@ -1,0 +1,247 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Style lab — full page with filters & day separators</title>
+<!-- Throwaway page for slice 05 design iteration. Not part of the app; delete when the look is decided. -->
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght,SOFT,WONK@9..144,600..900,100,0&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
+<style>
+  :root {
+    --cream: #f4efe4;
+    --cream-card: #f8f4ea;
+    --forest: #2c3a2a;
+    --moss: #6b7263;
+    --lime: #a6d653;
+  }
+  * { margin: 0; box-sizing: border-box; }
+  body {
+    background: var(--cream);
+    color: var(--forest);
+    font-family: 'Inter', system-ui, sans-serif;
+    padding: 1.5rem 1rem 4rem;
+  }
+  .display { font-family: 'Fraunces', serif; font-weight: 900; font-variation-settings: 'SOFT' 100, 'WONK' 0; }
+  section { max-width: 760px; margin: 0 auto 3rem; }
+  .variant-label {
+    display: inline-block;
+    font-size: 0.7rem; font-weight: 700;
+    letter-spacing: 0.08em; text-transform: uppercase;
+    border: 1.5px dashed var(--moss);
+    color: var(--moss);
+    border-radius: 999px;
+    padding: 0.3rem 0.8rem;
+    margin-bottom: 1.25rem;
+  }
+
+  /* ---- header ---- */
+  h1 { font-size: 2.2rem; line-height: 1.05; letter-spacing: -0.01em; }
+  @media (min-width: 640px) { h1 { font-size: 2.8rem; } }
+  .updated { color: var(--moss); font-size: 0.9rem; margin-top: 0.6rem; }
+
+  /* ---- filter pills ---- */
+  .filters { display: flex; gap: 0.6rem; margin: 1.4rem 0 1.6rem; flex-wrap: wrap; }
+  .filter {
+    font-family: 'Inter', sans-serif;
+    font-size: 0.78rem; font-weight: 700;
+    letter-spacing: 0.06em; text-transform: uppercase;
+    color: var(--forest);
+    background: transparent;
+    border: 2px solid var(--forest);
+    border-radius: 999px;
+    padding: 0.5rem 1.15rem;
+    cursor: pointer;
+    transition: transform 80ms ease, box-shadow 80ms ease, background 80ms ease;
+  }
+  .filter:hover { transform: translate(-1px, -1px); box-shadow: 3px 3px 0 var(--forest); }
+  .filter.active { background: var(--lime); box-shadow: 3px 3px 0 var(--forest); }
+
+  /* ---- day separator badge ---- */
+  .day-badge {
+    display: inline-block;
+    font-size: 0.72rem; font-weight: 700;
+    letter-spacing: 0.08em; text-transform: uppercase;
+    border: 1.5px solid var(--forest);
+    border-radius: 999px;
+    padding: 0.32rem 0.9rem;
+    background: var(--cream-card);
+    margin: 1.6rem 0 0.85rem;
+  }
+  .day-badge:first-of-type { margin-top: 0; }
+
+  /* ---- slot card: one component, two postures ---- */
+  ul { list-style: none; padding: 0; display: grid; gap: 1rem; }
+  a.card {
+    display: grid;
+    grid-template-columns: auto 1fr;
+    grid-template-areas:
+      "time   date"
+      "clinic clinic"
+      "rmt    pill";
+    column-gap: 0.6rem;
+    align-items: baseline;
+    background: var(--cream-card);
+    border: 2px solid var(--forest);
+    border-radius: 16px;
+    padding: 1rem 1.25rem 0.9rem;
+    box-shadow: 4px 4px 0 var(--forest);
+    text-decoration: none;
+    color: inherit;
+    transition: transform 80ms ease, box-shadow 80ms ease;
+  }
+  a.card:hover { transform: translate(-1px, -1px); box-shadow: 5px 5px 0 var(--forest); }
+  a.card:active { transform: translate(3px, 3px); box-shadow: 1px 1px 0 var(--forest); }
+
+  .time { grid-area: time; font-size: 1.6rem; }
+  .date { grid-area: date; color: var(--moss); font-size: 0.85rem; }
+  .clinic { grid-area: clinic; font-size: 1.2rem; margin-top: 0.3rem; }
+  .rmt { grid-area: rmt; color: var(--moss); font-size: 0.875rem; margin-top: 0.5rem; }
+  .pill {
+    grid-area: pill; justify-self: end; align-self: center;
+    font-family: 'Inter', sans-serif;
+    font-size: 0.7rem; font-weight: 700;
+    letter-spacing: 0.06em; text-transform: uppercase;
+    color: var(--forest);
+    background: var(--lime);
+    border: 2px solid var(--forest);
+    border-radius: 999px;
+    padding: 0.35rem 0.9rem;
+    box-shadow: 2px 2px 0 var(--forest);
+    white-space: nowrap;
+  }
+
+  @media (min-width: 640px) {
+    a.card {
+      grid-template-columns: 11rem 1fr auto;
+      grid-template-areas:
+        "time clinic pill"
+        "date rmt    pill";
+      column-gap: 1.5rem;
+      padding: 1.15rem 1.5rem;
+    }
+    .time { font-size: 1.75rem; }
+    .date { font-size: 0.95rem; }
+    .clinic { font-size: 1.45rem; margin-top: 0; }
+    .rmt { font-size: 1rem; margin-top: 0.25rem; }
+    .pill { font-size: 0.85rem; padding: 0.6rem 1.4rem; box-shadow: 2px 2px 0 var(--forest); }
+  }
+
+  /* ---- empty state with redirect ---- */
+  .empty {
+    border: 2px dashed var(--moss);
+    border-radius: 16px;
+    padding: 2.25rem 1.5rem;
+    text-align: center;
+  }
+  .empty h2 { font-size: 1.6rem; margin-bottom: 0.4rem; }
+  .empty p { color: var(--moss); font-size: 0.95rem; margin-bottom: 1.2rem; }
+  .empty .filter.active { font-size: 0.8rem; }
+</style>
+</head>
+<body>
+
+<section>
+  <span class="variant-label">1 · Default view — Today</span>
+  <header>
+    <h1 class="display">Massage openings in Victoria</h1>
+    <p class="updated">Last updated 12 minutes ago · every clinic checked</p>
+  </header>
+  <div class="filters">
+    <button class="filter active">Today</button>
+    <button class="filter">2 days</button>
+    <button class="filter">3 days</button>
+  </div>
+  <ul>
+    <li>
+      <a class="card" href="#">
+        <span class="time display">2:30 PM</span>
+        <span class="date">Today, July 13</span>
+        <span class="clinic display">Equilibrium Massage Therapy</span>
+        <span class="rmt">Alex Chen · 60 min</span>
+        <span class="pill">Book ↗</span>
+      </a>
+    </li>
+    <li>
+      <a class="card" href="#">
+        <span class="time display">4:15 PM</span>
+        <span class="date">Today, July 13</span>
+        <span class="clinic display">Tall Tree Health</span>
+        <span class="rmt">Priya Sandhu · 45 min</span>
+        <span class="pill">Book ↗</span>
+      </a>
+    </li>
+  </ul>
+</section>
+
+<section>
+  <span class="variant-label">2 · "3 days" view with day separators</span>
+  <div class="filters">
+    <button class="filter">Today</button>
+    <button class="filter">2 days</button>
+    <button class="filter active">3 days</button>
+  </div>
+  <span class="day-badge">Today</span>
+  <ul>
+    <li>
+      <a class="card" href="#">
+        <span class="time display">4:15 PM</span>
+        <span class="date">July 13</span>
+        <span class="clinic display">Tall Tree Health</span>
+        <span class="rmt">Priya Sandhu · 45 min</span>
+        <span class="pill">Book ↗</span>
+      </a>
+    </li>
+  </ul>
+  <span class="day-badge">Tomorrow</span>
+  <ul>
+    <li>
+      <a class="card" href="#">
+        <span class="time display">9:00 AM</span>
+        <span class="date">July 14</span>
+        <span class="clinic display">Equilibrium Massage Therapy</span>
+        <span class="rmt">Alex Chen · 60 min</span>
+        <span class="pill">Book ↗</span>
+      </a>
+    </li>
+    <li>
+      <a class="card" href="#">
+        <span class="time display">11:30 AM</span>
+        <span class="date">July 14</span>
+        <span class="clinic display">Victoria Centre Acupuncture &amp; Massage</span>
+        <span class="rmt">Mei Wong · 60 min</span>
+        <span class="pill">Book ↗</span>
+      </a>
+    </li>
+  </ul>
+  <span class="day-badge">Wednesday, July 15</span>
+  <ul>
+    <li>
+      <a class="card" href="#">
+        <span class="time display">1:00 PM</span>
+        <span class="date">July 15</span>
+        <span class="clinic display">Moss Healthcare</span>
+        <span class="rmt">Jordan Lee · 45 min</span>
+        <span class="pill">Book ↗</span>
+      </a>
+    </li>
+  </ul>
+</section>
+
+<section>
+  <span class="variant-label">3 · Today is empty — redirect to wider window</span>
+  <div class="filters">
+    <button class="filter active">Today</button>
+    <button class="filter">2 days</button>
+    <button class="filter">3 days</button>
+  </div>
+  <div class="empty">
+    <h2 class="display">Nothing left today</h2>
+    <p>Every clinic was checked — today is fully booked. But there are 14 openings in the next 3 days.</p>
+    <button class="filter active">Show 3 days</button>
+  </div>
+</section>
+
+</body>
+</html>

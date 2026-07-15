@@ -30,6 +30,27 @@ def test_frontend_origin_reads_env_var(monkeypatch):
     assert config.frontend_origin() == "https://rmt.example.com"
 
 
+def test_lookahead_defaults_to_three_days(monkeypatch):
+    monkeypatch.delenv("LOOKAHEAD_DAYS", raising=False)
+
+    assert config.lookahead_days() == 3
+
+
+def test_lookahead_reads_env_var(monkeypatch):
+    monkeypatch.setenv("LOOKAHEAD_DAYS", "5")
+
+    assert config.lookahead_days() == 5
+
+
+def test_timezone_for_known_city():
+    assert config.timezone_for_city("Victoria") == "America/Vancouver"
+
+
+def test_timezone_falls_back_to_default_city_for_unknown_or_none():
+    assert config.timezone_for_city(None) == "America/Vancouver"
+    assert config.timezone_for_city("Nowhere") == "America/Vancouver"
+
+
 def test_scrape_interval_defaults_to_15_minutes(monkeypatch):
     monkeypatch.delenv("SCRAPE_INTERVAL_MINUTES", raising=False)
 

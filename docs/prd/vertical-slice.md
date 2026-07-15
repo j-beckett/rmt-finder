@@ -82,8 +82,8 @@ configuration, not rework.
    notice that the last check failed — so that I see the best real data
    available instead of a misleading empty list.
 9. As a massage-seeking user, I want a clear, friendly empty state when
-   there genuinely are no slots in the next 24 hours, so that I can tell
-   "nothing available" apart from "something is broken."
+   there genuinely are no slots in the lookahead window (the next few days),
+   so that I can tell "nothing available" apart from "something is broken."
 10. As a massage-seeking user, I want slot times shown in the clinic's local
     time, so that the time I see matches the time on the clinic's booking
     page.
@@ -206,8 +206,9 @@ configuration, not rework.
   is newer than the served run (i.e. the latest check failed entirely), the
   page says so and shows when the displayed data is from.
 - **Genuine empty state:** when the served run succeeded and simply found no
-  slots in the next 24 hours, show a clear, friendly "no availability"
-  message — visually distinct from error/failure states.
+  slots in the lookahead window (`LOOKAHEAD_DAYS`, default three days), show a
+  clear, friendly "no availability" message — visually distinct from
+  error/failure states.
 - **Deliberate visual identity — warm/wellness direction:** warm neutrals,
   generous whitespace, rounded cards, humanist/serif display font.
   Library-default gray is explicitly not acceptable. Iterate via screenshots

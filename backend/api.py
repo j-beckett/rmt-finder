@@ -33,5 +33,9 @@ def availability(city: str | None = None):
         "latest_attempt_at": latest.finished_at if latest else None,
         "clinics_attempted": run.clinics_attempted if run else None,
         "failed_clinics": run.failed_clinics if run else [],
+        # Window metadata comes from config, not the run, so the frontend never
+        # hardcodes the lookahead or the city's timezone.
+        "window_days": config.lookahead_days(),
+        "timezone": config.timezone_for_city(city),
         "slots": [_slot_dict(slot) for slot in slots],
     }

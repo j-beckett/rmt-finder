@@ -1,11 +1,11 @@
 import re
 import json
 import html
-from datetime import datetime, timedelta, timezone
+from datetime import datetime, time, timedelta, timezone
 from .base import BaseAdapter
 from ..models import AvailabilityResult, ServiceType
 from ..web_client import make_session
-from config import LOOKAHEAD_HOURS
+from config import lookahead_days
 
 
 SERVICE_TYPE_KEYWORDS = {
@@ -164,12 +164,20 @@ class JaneAppAdapter(BaseAdapter):
 
         return service_map
 
-    def _is_within_lookahead(self, start_at: str) -> bool:
-        """Check if a slot falls within the next LOOKAHEAD_HOURS hours."""
+    def _is_within_lookahead(self, start_at: str, now: datetime | None = None) -> bool:
+        """Check if a slot falls within the next lookahead_days() calendar days.
+
+        Floored to the clinic-local end of the last day, so the window is always
+        whole days (today through today + N-1), never a ragged partial day.
+        `now` is injectable for tests; it defaults to the current instant.
+        """
         try:
             slot_time = datetime.fromisoformat(start_at)
-            now = datetime.now(timezone.utc).astimezone(slot_time.tzinfo)
-            cutoff = now + timedelta(hours=LOOKAHEAD_HOURS)
+            if now is None:
+                now = datetime.now(timezone.utc)
+            now = now.astimezone(slot_time.tzinfo)
+            last_day = (now + timedelta(days=lookahead_days() - 1)).date()
+            cutoff = datetime.combine(last_day, time.max, tzinfo=slot_time.tzinfo)
             return now <= slot_time <= cutoff
         except ValueError:
             return False

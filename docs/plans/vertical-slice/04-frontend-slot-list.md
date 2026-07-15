@@ -2,6 +2,8 @@
 
 **Type:** HITL
 
+**Done in `638ac71`** (human-reviewed in browser against the live API, 2026-07-11).
+
 ## Parent PRD
 
 `docs/prd/vertical-slice.md`
@@ -30,17 +32,17 @@ the live API) before the states/design slice builds on it.
 
 ## Acceptance criteria
 
-- [ ] Page loads against the running API and lists real slots
+- [x] Page loads against the running API and lists real slots
       soonest-first with time, clinic, RMT, duration, and a working Book
       link per slot
-- [ ] Times render in clinic-local time matching what the clinic's booking
+- [x] Times render in clinic-local time matching what the clinic's booking
       page shows
-- [ ] "Last updated X ago" line derived from the envelope's served
+- [x] "Last updated X ago" line derived from the envelope's served
       `scraped_at`
-- [ ] API base URL comes from env config; changing it requires no code edit
-- [ ] `sortSlots` is a pure function with Vitest coverage; Vitest passes
-- [ ] No component/rendering tests (per PRD testing decisions)
-- [ ] Human has reviewed the working page in the browser and signed off
+- [x] API base URL comes from env config; changing it requires no code edit
+- [x] `sortSlots` is a pure function with Vitest coverage; Vitest passes
+- [x] No component/rendering tests (per PRD testing decisions)
+- [x] Human has reviewed the working page in the browser and signed off
 
 ## Blocked by
 

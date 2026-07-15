@@ -1,8 +1,216 @@
 @import "tailwindcss";
+@import "@fontsource-variable/fraunces/full.css";
+@import "@fontsource-variable/inter";
 
-/* Plain light page until slice 05 lands the real visual identity. */
+/*
+ * Visual identity (slice 05): retro warm/wellness — cream base, deep forest
+ * ink, chartreuse accent, chunky soft serif display, outlined "sticker"
+ * cards with hard offset shadows. Approved via style-lab iteration.
+ */
+@theme {
+  --font-sans: "Inter Variable", system-ui, sans-serif;
+  --font-display: "Fraunces Variable", Georgia, serif;
+
+  --color-cream: #f4efe4; /* page background */
+  --color-card: #f8f4ea; /* card background */
+  --color-forest: #2c3a2a; /* ink, borders, shadows */
+  --color-panel: #303f2d; /* dark banner panels */
+  --color-moss: #6b7263; /* muted supporting text */
+  --color-lime: #a6d653; /* accent: pills, active filter */
+  --color-lime-bright: #b7e95c; /* accent on dark panels */
+}
+
 html {
-  background-color: white;
-  color: #111827;
+  background-color: var(--color-cream);
+  color: var(--color-forest);
   color-scheme: light;
+}
+
+@layer components {
+  /* Fraunces display face: soft corners, no wonk; weight set per use. */
+  .display {
+    font-family: var(--font-display);
+    font-variation-settings: "SOFT" 100, "WONK" 0;
+    font-weight: 900;
+  }
+
+  /* Lime "sticker" pill (Book badge, empty-state action). */
+  .pill {
+    display: inline-block;
+    font-size: 0.7rem;
+    font-weight: 700;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    color: var(--color-forest);
+    background: var(--color-lime);
+    border: 2px solid var(--color-forest);
+    border-radius: 999px;
+    padding: 0.35rem 0.9rem;
+    box-shadow: 2px 2px 0 var(--color-forest);
+    white-space: nowrap;
+  }
+
+  /* Time-window filter pills. */
+  .filter-pill {
+    font-size: 0.78rem;
+    font-weight: 700;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    color: var(--color-forest);
+    background: transparent;
+    border: 2px solid var(--color-forest);
+    border-radius: 999px;
+    padding: 0.5rem 1.15rem;
+    cursor: pointer;
+    transition:
+      transform 80ms ease,
+      box-shadow 80ms ease,
+      background 80ms ease;
+  }
+  .filter-pill:hover {
+    transform: translate(-1px, -1px);
+    box-shadow: 3px 3px 0 var(--color-forest);
+  }
+  .filter-pill[aria-pressed="true"] {
+    background: var(--color-lime);
+    box-shadow: 3px 3px 0 var(--color-forest);
+  }
+
+  /* Day separator badge. */
+  .day-badge {
+    display: inline-block;
+    font-size: 0.72rem;
+    font-weight: 700;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    border: 1.5px solid var(--color-forest);
+    border-radius: 999px;
+    padding: 0.32rem 0.9rem;
+    background: var(--color-card);
+  }
+
+  /*
+   * Slot card: one component, two postures. Grid areas stack on mobile and
+   * relax into a row from the sm breakpoint. The whole card is the link.
+   */
+  .slot-card {
+    display: grid;
+    grid-template-columns: auto 1fr;
+    grid-template-areas:
+      "time   date"
+      "clinic clinic"
+      "rmt    pill";
+    column-gap: 0.6rem;
+    align-items: baseline;
+    background: var(--color-card);
+    border: 2px solid var(--color-forest);
+    border-radius: 16px;
+    padding: 1rem 1.25rem 0.9rem;
+    box-shadow: 4px 4px 0 var(--color-forest);
+    text-decoration: none;
+    color: inherit;
+    transition:
+      transform 80ms ease,
+      box-shadow 80ms ease;
+  }
+  .slot-card:hover {
+    transform: translate(-1px, -1px);
+    box-shadow: 5px 5px 0 var(--color-forest);
+  }
+  .slot-card:active {
+    transform: translate(3px, 3px);
+    box-shadow: 1px 1px 0 var(--color-forest);
+  }
+
+  .slot-time {
+    grid-area: time;
+    font-size: 1.6rem;
+  }
+  .slot-date {
+    grid-area: date;
+    color: var(--color-moss);
+    font-size: 0.85rem;
+  }
+  .slot-clinic {
+    grid-area: clinic;
+    font-size: 1.2rem;
+    font-weight: 650;
+    margin-top: 0.3rem;
+  }
+  .slot-rmt {
+    grid-area: rmt;
+    color: var(--color-moss);
+    font-size: 0.875rem;
+    margin-top: 0.5rem;
+  }
+  .slot-card .pill {
+    grid-area: pill;
+    justify-self: end;
+    align-self: center;
+  }
+
+  @media (min-width: 640px) {
+    .slot-card {
+      grid-template-columns: 11rem 1fr auto;
+      grid-template-areas:
+        "time clinic pill"
+        "date rmt    pill";
+      column-gap: 1.5rem;
+      padding: 1.15rem 1.5rem;
+    }
+    .slot-time {
+      font-size: 1.75rem;
+    }
+    .slot-date {
+      font-size: 0.95rem;
+    }
+    .slot-clinic {
+      font-size: 1.45rem;
+      margin-top: 0;
+    }
+    .slot-rmt {
+      font-size: 1rem;
+      margin-top: 0.25rem;
+    }
+    .slot-card .pill {
+      font-size: 0.85rem;
+      padding: 0.6rem 1.4rem;
+    }
+  }
+
+  /* Loud staleness banner: dark forest panel, lime headline. */
+  .banner {
+    background: var(--color-panel);
+    color: var(--color-cream);
+    border: 2px solid var(--color-forest);
+    border-radius: 16px;
+    padding: 1.1rem 1.4rem;
+    box-shadow: 4px 4px 0 rgb(44 58 42 / 0.35);
+  }
+  .banner-title {
+    font-size: 1.35rem;
+    color: var(--color-lime-bright);
+    margin-bottom: 0.25rem;
+  }
+  .banner-body {
+    font-size: 0.9rem;
+    color: #d8dccf;
+  }
+
+  /* Mid-loudness notice (failed latest check): outlined, solid, not alarming. */
+  .notice {
+    border: 2px solid var(--color-forest);
+    border-radius: 16px;
+    background: var(--color-card);
+    padding: 0.85rem 1.25rem;
+    font-size: 0.875rem;
+  }
+
+  /* Empty / notice box: dashed border, deliberately not card-like. */
+  .empty-box {
+    border: 2px dashed var(--color-moss);
+    border-radius: 16px;
+    padding: 2.25rem 1.5rem;
+    text-align: center;
+  }
 }

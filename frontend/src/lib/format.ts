@@ -1,3 +1,5 @@
+import { addDays } from './slots'
+
 /**
  * Clinic-local display helpers.
  *
@@ -28,6 +30,44 @@ export function formatSlotDate(startAt: string): string {
     day: 'numeric',
     timeZone: 'UTC',
   })
+}
+
+/** "2026-07-10T23:30:00-07:00" → "July 10" (clinic-local, no weekday). */
+export function formatShortDate(startAt: string): string {
+  const [year, month, day] = startAt.slice(0, 10).split('-').map(Number)
+  const date = new Date(Date.UTC(year, month - 1, day))
+  return date.toLocaleDateString('en-US', {
+    month: 'long',
+    day: 'numeric',
+    timeZone: 'UTC',
+  })
+}
+
+/**
+ * Clinic-local calendar date ("2026-07-13") in a given IANA timezone. Uses the
+ * city's zone, not the viewer's browser, so "today" is correct even when the
+ * page is opened from another timezone, and it tracks PST/PDT automatically.
+ */
+export function todayInZone(timeZone: string, now: Date = new Date()): string {
+  // en-CA formats as YYYY-MM-DD.
+  return new Intl.DateTimeFormat('en-CA', { timeZone }).format(now)
+}
+
+const NUMBER_WORDS = [
+  'zero', 'one', 'two', 'three', 'four', 'five',
+  'six', 'seven', 'eight', 'nine', 'ten',
+]
+
+/** Small whole number as a word ("three"); falls back to digits past ten. */
+export function spellOut(n: number): string {
+  return NUMBER_WORDS[n] ?? String(n)
+}
+
+/** Day-separator label: "Today", "Tomorrow", or "Wednesday, July 15". */
+export function formatDayLabel(dateStr: string, todayStr: string): string {
+  if (dateStr === todayStr) return 'Today'
+  if (dateStr === addDays(todayStr, 1)) return 'Tomorrow'
+  return formatSlotDate(dateStr)
 }
 
 /** "how long ago" line for the served run, e.g. "12 minutes ago". */

@@ -1,5 +1,13 @@
 import { describe, expect, it } from 'vitest'
-import { formatSlotDate, formatSlotTime, timeAgo } from './format'
+import {
+  formatDayLabel,
+  formatShortDate,
+  formatSlotDate,
+  formatSlotTime,
+  spellOut,
+  timeAgo,
+  todayInZone,
+} from '../format'
 
 describe('formatSlotTime', () => {
   it('renders the wall-clock time written in the string (clinic-local), ignoring the machine timezone', () => {
@@ -22,6 +30,55 @@ describe('formatSlotDate', () => {
     // next UTC day, which must not shift the displayed date.
     expect(formatSlotDate('2026-07-10T23:30:00-07:00')).toBe('Friday, July 10')
     expect(formatSlotDate('2026-07-11T00:15:00-07:00')).toBe('Saturday, July 11')
+  })
+})
+
+describe('todayInZone', () => {
+  it('uses the given timezone, not the machine timezone', () => {
+    // 2026-07-14 05:00 UTC is still 2026-07-13 (10 PM PDT) in Vancouver.
+    const instant = new Date('2026-07-14T05:00:00Z')
+    expect(todayInZone('America/Vancouver', instant)).toBe('2026-07-13')
+  })
+
+  it('rolls to the next day once the zone passes midnight', () => {
+    // 2026-07-14 08:00 UTC is 2026-07-14 (1 AM PDT) in Vancouver.
+    const instant = new Date('2026-07-14T08:00:00Z')
+    expect(todayInZone('America/Vancouver', instant)).toBe('2026-07-14')
+  })
+})
+
+describe('spellOut', () => {
+  it('spells small whole numbers as words', () => {
+    expect(spellOut(1)).toBe('one')
+    expect(spellOut(3)).toBe('three')
+    expect(spellOut(10)).toBe('ten')
+  })
+
+  it('falls back to digits past ten', () => {
+    expect(spellOut(14)).toBe('14')
+  })
+})
+
+describe('formatShortDate', () => {
+  it('renders the clinic-local month and day without weekday', () => {
+    expect(formatShortDate('2026-07-10T23:30:00-07:00')).toBe('July 10')
+  })
+})
+
+describe('formatDayLabel', () => {
+  it('labels today and tomorrow by name', () => {
+    expect(formatDayLabel('2026-07-13', '2026-07-13')).toBe('Today')
+    expect(formatDayLabel('2026-07-14', '2026-07-13')).toBe('Tomorrow')
+  })
+
+  it('falls back to the full date beyond tomorrow', () => {
+    expect(formatDayLabel('2026-07-15', '2026-07-13')).toBe(
+      'Wednesday, July 15',
+    )
+  })
+
+  it('crosses month boundaries when naming tomorrow', () => {
+    expect(formatDayLabel('2026-08-01', '2026-07-31')).toBe('Tomorrow')
   })
 })
 
