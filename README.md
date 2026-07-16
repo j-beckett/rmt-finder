@@ -21,7 +21,7 @@ Booking a massage in Victoria means checking two dozen clinic booking sites by
 hand, one at a time, most of which show nothing available. Each clinic runs its
 own Jane App booking page, and no aggregate view exists. RMT Finder scrapes the
 public booking pages on a schedule and answers the only question that matters:
-*who has an opening in the next three days?*
+_who has an opening in the next three days?_
 
 ## How it works
 
@@ -42,7 +42,7 @@ both the JSON API and the built frontend from one origin.
 
 ## Design decisions
 
-**Serve the last *good* run, admit the gap.** If the most recent scrape failed
+**Serve the last _good_ run, admit the gap.** If the most recent scrape failed
 entirely, the API serves the last run that succeeded and reports both
 timestamps. The frontend turns that into explicit UI states: a staleness banner
 when data is older than two scrape intervals, a quieter notice when some
@@ -60,12 +60,6 @@ crawlers on public booking pages (`User-agent: * / Allow: /`). On top of that,
 the scraper keeps its footprint small: public pages only, a pause between
 clinics, ~one pass per 15 minutes, and a run-history table that would surface
 any throttling immediately.
-
-**Duplicates are signal, not noise.** There's deliberately no deduplication
-yet: while treatment filtering is still being tuned per-clinic, a duplicate
-slot usually means a filtering bug (the same opening matched under two
-treatment names). Dedup gets added only once filtering is proven clean —
-otherwise it would hide exactly the bugs that need fixing.
 
 **SQLite on purpose.** One writer (the scheduler), one reader (the API), a few
 hundred rows per run — a database server would add operational surface without
@@ -97,7 +91,7 @@ and `npm test` in `frontend/` (33 tests).
 
 ## Deployment
 
-Runs on a $4/month DigitalOcean droplet: two systemd services (API + scheduler)
+Runs on a DigitalOcean droplet: two systemd services (API + scheduler)
 sharing the SQLite file, Caddy terminating HTTPS in front of uvicorn, GitHub
 Actions running both test suites on every push. Deliberately Docker-free for
 v1 — the full reasoning and step-by-step runbook is in
@@ -109,5 +103,4 @@ v1 — the full reasoning and step-by-step runbook is in
 - Dockerize (compose file for the API + scheduler pair)
 - Publish each run as a static JSON snapshot to a CDN, decoupling serving
   uptime from the scraper box
-- Slot-level dedup, once per-clinic filtering is proven clean
 - More cities, more booking platforms (the scraper is adapter-based)
