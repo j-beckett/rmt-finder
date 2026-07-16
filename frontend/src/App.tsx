@@ -50,7 +50,7 @@ function App() {
   return (
     <main className="mx-auto max-w-3xl px-4 py-8 sm:py-12">
       <header>
-        <h1 className="display text-4xl sm:text-5xl leading-none tracking-tight">
+        <h1 className="display text-5xl sm:text-6xl leading-none tracking-tight">
           Massage openings in Victoria
         </h1>
         {state.status === 'ready' && (
@@ -116,13 +116,18 @@ function Availability({
   const shown = filterSlotsByWindow(all, activeWindow, today)
   const windowDays = data.window_days > 0 ? data.window_days : FALLBACK_WINDOW_DAYS
   // One pill per collected day plus "All", so every day is one tap away and
-  // the pill row grows with the envelope's window.
-  const pills: { key: SlotWindow; label: string }[] = [
-    ...Array.from({ length: windowDays }, (_, n) => ({
-      key: n as SlotWindow,
-      label: formatPillLabel(addDays(today, n), today),
-    })),
-    { key: 'all' as SlotWindow, label: 'All' },
+  // the pill row grows with the envelope's window. Weekday pills carry a
+  // short form ("Fri 17") so the row fits one line on phones.
+  const pills: { key: SlotWindow; label: string; shortLabel: string }[] = [
+    ...Array.from({ length: windowDays }, (_, n) => {
+      const date = addDays(today, n)
+      return {
+        key: n as SlotWindow,
+        label: formatPillLabel(date, today),
+        shortLabel: formatPillLabel(date, today, 'short'),
+      }
+    }),
+    { key: 'all' as SlotWindow, label: 'All', shortLabel: 'All' },
   ]
   // e.g. "three days" — spelled out, from the envelope so it never hardcodes 3.
   const windowLabel = `${spellOut(windowDays)} ${windowDays === 1 ? 'day' : 'days'}`
@@ -160,7 +165,7 @@ function Availability({
 
       <div className="mt-8">
         <div role="group" aria-label="Time window" className="flex flex-wrap gap-2.5">
-          {pills.map(({ key, label }) => (
+          {pills.map(({ key, label, shortLabel }) => (
             <button
               key={key}
               type="button"
@@ -168,7 +173,8 @@ function Availability({
               aria-pressed={key === activeWindow}
               onClick={() => onWindowChange(key)}
             >
-              {label}
+              <span className="sm:hidden">{shortLabel}</span>
+              <span className="hidden sm:inline">{label}</span>
             </button>
           ))}
         </div>

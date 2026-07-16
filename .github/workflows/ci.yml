@@ -31,3 +31,45 @@ jobs:
       - run: npm ci
       - run: npm test
       - run: npm run build
+      # The deploy job ships this exact build, so what lands on the server
+      # is the artifact that was tested, not a rebuild.
+      - if: github.event_name == 'push'
+        uses: actions/upload-artifact@v4
+        with:
+          name: frontend-dist
+          path: frontend/dist
+
+  deploy:
+    # Push events only reach this workflow from main (see `on:` above),
+    # so this skips deploys for pull requests.
+    if: github.event_name == 'push'
+    needs: [backend, frontend]
+    runs-on: ubuntu-latest
+    concurrency:
+      group: deploy-production
+      cancel-in-progress: false
+    environment:
+      name: production
+      url: https://rmtfinder.studiobeckett.ca
+    env:
+      DEPLOY_TARGET: rmt@rmtfinder.studiobeckett.ca
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with:
+          name: frontend-dist
+          path: frontend/dist
+      - name: Set up SSH
+        env:
+          DEPLOY_SSH_KEY: ${{ secrets.DEPLOY_SSH_KEY }}
+        run: |
+          mkdir -p ~/.ssh
+          printf '%s\n' "$DEPLOY_SSH_KEY" > ~/.ssh/id_ed25519
+          chmod 600 ~/.ssh/id_ed25519
+          cp deploy/known_hosts ~/.ssh/known_hosts
+      - name: Upload frontend build
+        run: rsync -az --delete frontend/dist/ "$DEPLOY_TARGET":rmt-finder/frontend/dist/
+      - name: Pull, install, restart services
+        run: ssh "$DEPLOY_TARGET" 'bash -s' < deploy/deploy.sh
+      - name: Verify site is live
+        run: curl -fsS --retry 5 --retry-delay 3 --retry-all-errors https://rmtfinder.studiobeckett.ca/api/availability > /dev/null

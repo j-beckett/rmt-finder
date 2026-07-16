@@ -75,6 +75,11 @@ describe('formatPillLabel', () => {
   it('labels days beyond tomorrow with full weekday + day', () => {
     expect(formatPillLabel('2026-07-15', '2026-07-13')).toBe('Wednesday 15')
   })
+
+  it('abbreviates the weekday in the short form', () => {
+    expect(formatPillLabel('2026-07-15', '2026-07-13', 'short')).toBe('Wed 15')
+    expect(formatPillLabel('2026-07-13', '2026-07-13', 'short')).toBe('Today')
+  })
 })
 
 describe('formatDayLabel', () => {
