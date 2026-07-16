@@ -64,7 +64,9 @@ jobs:
           DEPLOY_SSH_KEY: ${{ secrets.DEPLOY_SSH_KEY }}
         run: |
           mkdir -p ~/.ssh
-          printf '%s\n' "$DEPLOY_SSH_KEY" > ~/.ssh/id_ed25519
+          # tr guards against CRLF line endings sneaking in when the
+          # secret is pasted from Windows; libcrypto rejects them.
+          printf '%s\n' "$DEPLOY_SSH_KEY" | tr -d '\r' > ~/.ssh/id_ed25519
           chmod 600 ~/.ssh/id_ed25519
           cp deploy/known_hosts ~/.ssh/known_hosts
       - name: Upload frontend build
