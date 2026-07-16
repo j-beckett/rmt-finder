@@ -61,13 +61,15 @@ jobs:
           path: frontend/dist
       - name: Set up SSH
         env:
-          DEPLOY_SSH_KEY: ${{ secrets.DEPLOY_SSH_KEY }}
+          VPS_DEPLOYMENT_KEY: ${{ secrets.VPS_DEPLOYMENT_KEY }}
         run: |
           mkdir -p ~/.ssh
-          # tr guards against CRLF line endings sneaking in when the
-          # secret is pasted from Windows; libcrypto rejects them.
-          printf '%s\n' "$DEPLOY_SSH_KEY" | tr -d '\r' > ~/.ssh/id_ed25519
+          # The secret holds the private key base64-encoded (one line),
+          # immune to the newline/CRLF mangling that corrupts raw pastes.
+          printf '%s' "$VPS_DEPLOYMENT_KEY" | tr -d '\r\n ' | base64 -d > ~/.ssh/id_ed25519
           chmod 600 ~/.ssh/id_ed25519
+          # Fail fast, at this step, if the secret didn't decode to a valid key.
+          ssh-keygen -y -f ~/.ssh/id_ed25519 > /dev/null
           cp deploy/known_hosts ~/.ssh/known_hosts
       - name: Upload frontend build
         run: rsync -az --delete frontend/dist/ "$DEPLOY_TARGET":rmt-finder/frontend/dist/

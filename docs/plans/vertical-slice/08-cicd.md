@@ -56,13 +56,17 @@ Steps marked **[you]** happen on your PC (Git Bash) or in the GitHub UI.
    ssh rmt@rmtfinder.studiobeckett.ca 'cat >> ~/.ssh/authorized_keys' < ~/.ssh/rmt_deploy.pub
    ```
 
-3. **[you]** Add the private half as a repo secret: GitHub →
-   rmt-finder → Settings → Secrets and variables → Actions → New
-   repository secret. Name: `DEPLOY_SSH_KEY`, value: the full output of
+3. **[you]** Add the private half as a repo secret, **base64-encoded**
+   (a single line survives any clipboard/browser newline mangling; the
+   workflow decodes it). Copy it:
 
    ```bash
-   cat ~/.ssh/rmt_deploy
+   base64 -w0 < ~/.ssh/rmt_deploy | clip.exe
    ```
+
+   Then GitHub → rmt-finder → Settings → Secrets and variables →
+   Actions → New repository secret. Name: `VPS_DEPLOYMENT_KEY`, value:
+   paste (one long line, no BEGIN/END markers — that's correct).
 
 ### Phase 2 — passwordless service restart
 
