@@ -50,7 +50,7 @@ function App() {
   return (
     <main className="mx-auto max-w-3xl px-4 py-8 sm:py-12">
       <header>
-        <h1 className="display text-5xl sm:text-6xl leading-none tracking-tight">
+        <h1 className="display text-4xl sm:text-5xl leading-none tracking-tight">
           Massage openings in Victoria
         </h1>
         {state.status === 'ready' && (
