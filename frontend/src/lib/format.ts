@@ -70,6 +70,20 @@ export function formatDayLabel(dateStr: string, todayStr: string): string {
   return formatSlotDate(dateStr)
 }
 
+/** Filter-pill label: "Today", "Tomorrow", or "Friday 17". */
+export function formatPillLabel(dateStr: string, todayStr: string): string {
+  if (dateStr === todayStr) return 'Today'
+  if (dateStr === addDays(todayStr, 1)) return 'Tomorrow'
+  const [year, month, day] = dateStr.slice(0, 10).split('-').map(Number)
+  const date = new Date(Date.UTC(year, month - 1, day))
+  // Composed by hand: Intl's weekday+day combo comes out as "15 Wednesday".
+  const weekday = date.toLocaleDateString('en-US', {
+    weekday: 'long',
+    timeZone: 'UTC',
+  })
+  return `${weekday} ${day}`
+}
+
 /** "how long ago" line for the served run, e.g. "12 minutes ago". */
 export function timeAgo(iso: string, nowMs: number): string {
   const elapsedMinutes = Math.floor((nowMs - Date.parse(iso)) / 60_000)

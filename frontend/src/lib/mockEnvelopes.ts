@@ -64,6 +64,7 @@ function envelope(overrides: Partial<AvailabilityResponse>): AvailabilityRespons
     failed_clinics: [],
     window_days: 3,
     timezone: 'America/Vancouver',
+    clinics_total: 23,
     slots: threeDaysOfSlots(),
     ...overrides,
   }

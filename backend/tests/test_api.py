@@ -132,6 +132,16 @@ def test_city_param_filters_slots_case_insensitively(tmp_path, monkeypatch):
     assert [slot["city"] for slot in body["slots"]] == ["victoria"]
 
 
+def test_envelope_carries_the_configured_clinic_count(tmp_path, monkeypatch):
+    from scraper.clinics import CLINICS
+
+    client, _ = make_client(tmp_path, monkeypatch)
+
+    body = client.get("/api/availability").json()
+
+    assert body["clinics_total"] == len(CLINICS)
+
+
 def test_frontend_build_is_served_from_root_when_present(tmp_path, monkeypatch):
     dist = tmp_path / "dist"
     dist.mkdir()

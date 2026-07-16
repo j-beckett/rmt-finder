@@ -29,8 +29,12 @@ export function addDays(dateStr: string, n: number): string {
   return new Date(Date.UTC(year, month - 1, day + n)).toISOString().slice(0, 10)
 }
 
-/** The three time windows the filter pills offer. */
-export type SlotWindow = 'today' | 'tomorrow' | 'all'
+/**
+ * A filter-pill window: a single day as an offset from today (0 = today,
+ * 1 = tomorrow, …) or "all". Day pills are derived from the envelope's
+ * window_days, so the UI grows with the collection window.
+ */
+export type SlotWindow = number | 'all'
 
 /**
  * Slots visible in a given window, by clinic-local calendar date. "all" is
@@ -44,7 +48,7 @@ export function filterSlotsByWindow(
   today: string,
 ): Slot[] {
   if (window === 'all') return slots
-  const target = window === 'today' ? today : addDays(today, 1)
+  const target = addDays(today, window)
   return slots.filter((slot) => slotDate(slot) === target)
 }
 

@@ -7,13 +7,16 @@ import {
 import { isStale, latestCheckFailed } from '@/lib/freshness'
 import {
   formatDayLabel,
+  formatPillLabel,
   formatShortDate,
+  formatSlotDate,
   formatSlotTime,
   spellOut,
   timeAgo,
   todayInZone,
 } from '@/lib/format'
 import {
+  addDays,
   filterSlotsByWindow,
   groupSlotsByDay,
   sortSlots,
@@ -26,19 +29,17 @@ type State =
   | { status: 'error'; message: string }
   | { status: 'ready'; data: AvailabilityResponse }
 
-const WINDOWS = [
-  { key: 'today', label: 'Today' },
-  { key: 'tomorrow', label: 'Tomorrow' },
-  { key: 'all', label: 'All' },
-] as const satisfies readonly { key: SlotWindow; label: string }[]
-
 // Fallback only for a stale/cached API that predates the envelope's timezone
 // field; the current backend always sends it.
 const FALLBACK_TIMEZONE = 'America/Vancouver'
 
+// Matches the backend's LOOKAHEAD_DAYS default; used only if an old API
+// omits window_days.
+const FALLBACK_WINDOW_DAYS = 3
+
 function App() {
   const [state, setState] = useState<State>({ status: 'loading' })
-  const [activeWindow, setActiveWindow] = useState<SlotWindow>('today')
+  const [activeWindow, setActiveWindow] = useState<SlotWindow>(0)
 
   useEffect(() => {
     fetchAvailability()
@@ -52,6 +53,14 @@ function App() {
         <h1 className="display text-4xl sm:text-5xl leading-none tracking-tight">
           Massage openings in Victoria
         </h1>
+        {state.status === 'ready' && (
+          <p className="mt-3 text-moss">
+            Showing bookable RMT appointments
+            {state.data.clinics_total > 0 &&
+              ` across ${state.data.clinics_total} clinics`}
+            , rechecked every {SCRAPE_INTERVAL_MINUTES} minutes.
+          </p>
+        )}
       </header>
 
       {state.status === 'loading' && (
@@ -105,12 +114,22 @@ function Availability({
   const checkFailed = latestCheckFailed(data.scraped_at, data.latest_attempt_at)
   const all = sortSlots(data.slots)
   const shown = filterSlotsByWindow(all, activeWindow, today)
+  const windowDays = data.window_days > 0 ? data.window_days : FALLBACK_WINDOW_DAYS
+  // One pill per collected day plus "All", so every day is one tap away and
+  // the pill row grows with the envelope's window.
+  const pills: { key: SlotWindow; label: string }[] = [
+    ...Array.from({ length: windowDays }, (_, n) => ({
+      key: n as SlotWindow,
+      label: formatPillLabel(addDays(today, n), today),
+    })),
+    { key: 'all' as SlotWindow, label: 'All' },
+  ]
   // e.g. "three days" — spelled out, from the envelope so it never hardcodes 3.
-  // Degrades to "few days" if an old API omits window_days (never "undefined").
-  const windowLabel =
-    data.window_days > 0
-      ? `${spellOut(data.window_days)} ${data.window_days === 1 ? 'day' : 'days'}`
-      : 'few days'
+  const windowLabel = `${spellOut(windowDays)} ${windowDays === 1 ? 'day' : 'days'}`
+  // Under the pills: the active day's full date. "All" gets no caption — its
+  // day badges already say where you are.
+  const caption =
+    activeWindow === 'all' ? null : formatSlotDate(addDays(today, activeWindow))
 
   return (
     <>
@@ -139,9 +158,9 @@ function Availability({
         </div>
       )}
 
-      <div className="mt-6">
+      <div className="mt-8">
         <div role="group" aria-label="Time window" className="flex flex-wrap gap-2.5">
-          {WINDOWS.map(({ key, label }) => (
+          {pills.map(({ key, label }) => (
             <button
               key={key}
               type="button"
@@ -153,12 +172,10 @@ function Availability({
             </button>
           ))}
         </div>
-        <p className="mt-2.5 text-sm text-moss">
-          The next {windowLabel} of openings
-        </p>
+        {caption && <p className="mt-4 text-sm text-moss">{caption}</p>}
       </div>
 
-      <div className="mt-7">
+      <div className="mt-9">
         {shown.length > 0 ? (
           // Day badges only add information in the "all" view; for Today or
           // Tomorrow the badge would just repeat the active pill.
@@ -170,7 +187,12 @@ function Availability({
         ) : all.length > 0 ? (
           <div className="empty-box">
             <h2 className="display text-2xl mb-2">
-              {activeWindow === 'today' ? 'Nothing left today' : 'Nothing tomorrow'}
+              {activeWindow === 0
+                ? 'Nothing left today'
+                : activeWindow === 1
+                  ? 'Nothing tomorrow'
+                  : // "Nothing on Friday" — weekday from "Friday, July 17".
+                    `Nothing on ${formatSlotDate(addDays(today, activeWindow as number)).split(',')[0]}`}
             </h2>
             <p className="text-moss text-sm mb-5">
               Every clinic was checked — but there {all.length === 1 ? 'is' : 'are'}{' '}
@@ -215,7 +237,7 @@ function MetaLine({
     <div className="mt-3 text-sm text-moss">
       <p>
         Last updated {timeAgo(data.scraped_at!, nowMs)}
-        {failed === 0 && latestCheckOk && ' · every clinic checked'}
+        {failed === 0 && latestCheckOk && ' · all clinics checked'}
       </p>
       {failed > 0 && (
         <p className="mt-0.5">

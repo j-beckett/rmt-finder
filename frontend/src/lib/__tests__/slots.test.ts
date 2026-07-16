@@ -69,14 +69,16 @@ describe('filterSlotsByWindow', () => {
   const dayAfter = makeSlot({ start_at: '2026-07-15T11:00:00-07:00' })
   const all = [today, tomorrow, dayAfter]
 
-  it('keeps only today for the "today" window', () => {
-    expect(filterSlotsByWindow(all, 'today', '2026-07-13')).toEqual([today])
+  it('keeps only today for day offset 0', () => {
+    expect(filterSlotsByWindow(all, 0, '2026-07-13')).toEqual([today])
   })
 
-  it('keeps only tomorrow for the "tomorrow" window (not today)', () => {
-    expect(filterSlotsByWindow(all, 'tomorrow', '2026-07-13')).toEqual([
-      tomorrow,
-    ])
+  it('keeps only tomorrow for day offset 1 (not today)', () => {
+    expect(filterSlotsByWindow(all, 1, '2026-07-13')).toEqual([tomorrow])
+  })
+
+  it('reaches the third day directly with offset 2', () => {
+    expect(filterSlotsByWindow(all, 2, '2026-07-13')).toEqual([dayAfter])
   })
 
   it('keeps everything for the "all" window, including the far day', () => {
@@ -85,18 +87,16 @@ describe('filterSlotsByWindow', () => {
 
   it('filters by clinic-local calendar date, not elapsed hours', () => {
     // 11:30 PM today is under 1h away but still "today"; 9 AM tomorrow is
-    // ~10h away but excluded from the "today" window.
+    // ~10h away but excluded from the today window.
     const lateTonight = makeSlot({ start_at: '2026-07-13T23:30:00-07:00' })
     expect(
-      filterSlotsByWindow([lateTonight, tomorrow], 'today', '2026-07-13'),
+      filterSlotsByWindow([lateTonight, tomorrow], 0, '2026-07-13'),
     ).toEqual([lateTonight])
   })
 
-  it('crosses a month boundary for the "tomorrow" window', () => {
+  it('crosses a month boundary for the tomorrow window', () => {
     const augFirst = makeSlot({ start_at: '2026-08-01T09:00:00-07:00' })
-    expect(filterSlotsByWindow([augFirst], 'tomorrow', '2026-07-31')).toEqual([
-      augFirst,
-    ])
+    expect(filterSlotsByWindow([augFirst], 1, '2026-07-31')).toEqual([augFirst])
   })
 })
 

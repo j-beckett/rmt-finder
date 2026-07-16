@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import {
   formatDayLabel,
+  formatPillLabel,
   formatShortDate,
   formatSlotDate,
   formatSlotTime,
@@ -62,6 +63,17 @@ describe('spellOut', () => {
 describe('formatShortDate', () => {
   it('renders the clinic-local month and day without weekday', () => {
     expect(formatShortDate('2026-07-10T23:30:00-07:00')).toBe('July 10')
+  })
+})
+
+describe('formatPillLabel', () => {
+  it('labels today and tomorrow by name', () => {
+    expect(formatPillLabel('2026-07-13', '2026-07-13')).toBe('Today')
+    expect(formatPillLabel('2026-07-14', '2026-07-13')).toBe('Tomorrow')
+  })
+
+  it('labels days beyond tomorrow with full weekday + day', () => {
+    expect(formatPillLabel('2026-07-15', '2026-07-13')).toBe('Wednesday 15')
   })
 })
 

@@ -10,6 +10,8 @@ export interface AvailabilityResponse {
   window_days: number
   /** IANA timezone of the served city, for computing its local "today". */
   timezone: string
+  /** Clinics on the scrape roster (from clinics.py), for the about line. */
+  clinics_total: number
   slots: Slot[]
 }
 

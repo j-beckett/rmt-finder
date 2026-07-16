@@ -127,6 +127,9 @@ html {
     font-size: 1.6rem;
   }
   .slot-date {
+    /* Hidden on mobile: the caption (single-day views) and day badges
+       ("All") already carry the date there. Desktop restores it below. */
+    display: none;
     grid-area: date;
     color: var(--color-moss);
     font-size: 0.85rem;
@@ -162,6 +165,8 @@ html {
       font-size: 1.75rem;
     }
     .slot-date {
+      /* Back on: sits under the time in the row posture. */
+      display: block;
       font-size: 0.95rem;
     }
     .slot-clinic {

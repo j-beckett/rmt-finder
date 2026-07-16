@@ -6,6 +6,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 
 import config
+from scraper.clinics import CLINICS
 from storage import Storage
 
 app = FastAPI()
@@ -39,6 +40,9 @@ def availability(city: str | None = None):
         # hardcodes the lookahead or the city's timezone.
         "window_days": config.lookahead_days(),
         "timezone": config.timezone_for_city(city),
+        # From the clinic roster (not the run) so the frontend's about line is
+        # right even before the first scrape and tracks clinics.py additions.
+        "clinics_total": len(CLINICS),
         "slots": [_slot_dict(slot) for slot in slots],
     }
 

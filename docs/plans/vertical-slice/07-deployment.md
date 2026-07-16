@@ -17,7 +17,7 @@
 - **Host:** smallest VPS (~$5 USD/mo — Hetzner US-West or DigitalOcean),
   treated as a time-boxed job-search expense. The Pi 4 stays in the
   backlog as a post-hire migration slice.
-- **URL:** `rmt.studiobeckett.ca` — one A record on the existing
+- **URL:** `rmtfinder.studiobeckett.ca` — one A record on the existing
   Namecheap domain. HTTPS via Caddy's automatic Let's Encrypt.
 - **v1 is deliberately Docker-free:** venv + two systemd services.
   Containerizing is its own later slice, done after bare-metal works so
@@ -111,12 +111,12 @@ happen in a browser or SSH session.
 
 9. **[you]** Namecheap → Domain List → studiobeckett.ca → Manage →
    Advanced DNS → Add New Record:
-   - Type: **A Record**, Host: **rmt**, Value: **<SERVER_IP>**, TTL:
+   - Type: **A Record**, Host: **rmtfinder**, Value: **<SERVER_IP>**, TTL:
      Automatic.
 
    Propagation is usually minutes. Check with
-   `nslookup rmt.studiobeckett.ca` — do this before Phase 5, since Caddy
-   needs the DNS record in place to obtain its certificate.
+   `nslookup rmtfinder.studiobeckett.ca` — do this before Phase 5, since
+   Caddy needs the DNS record in place to obtain its certificate.
 
 ### Phase 4 — the app on the server
 
@@ -193,7 +193,7 @@ happen in a browser or SSH session.
 17. **[you]** Replace `/etc/caddy/Caddyfile` with:
 
     ```
-    rmt.studiobeckett.ca {
+    rmtfinder.studiobeckett.ca {
         reverse_proxy 127.0.0.1:8000
     }
     ```
@@ -203,7 +203,7 @@ happen in a browser or SSH session.
 
 ### Phase 7 — acceptance
 
-- `https://rmt.studiobeckett.ca` loads with a valid certificate and shows
+- `https://rmtfinder.studiobeckett.ca` loads with a valid certificate and shows
   real slots.
 - The scheduler is writing: `runs` table gains a row every 15 minutes
   (`journalctl -u rmt-scheduler` or the site's last-updated line).
