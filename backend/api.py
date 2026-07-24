@@ -23,6 +23,35 @@ def _slot_dict(slot) -> dict:
     return data
 
 
+def _dedupe_slots(slots: list) -> list:
+    """Collapse slots that are the same physical opening surfaced twice.
+
+    Some Jane clinics list one appointment under two treatment products (e.g.
+    an "Initial 60 minute RMT Session" and a plain "60 minute RMT Session"),
+    both of which match our massage filter and both of which the openings API
+    returns at the same time for the same therapist. The frontend shows only
+    the therapist name and duration, and every slot links to the same clinic
+    booking page, so the extra row is a visible duplicate with nothing to tell
+    it apart. Collapse on (clinic, therapist, start time, duration), keeping the
+    first occurrence so order is preserved. Raw slots stay in the database
+    untouched, so a clinic double-listing a treatment is still visible there.
+    """
+    seen = set()
+    unique = []
+    for slot in slots:
+        key = (
+            slot.clinic_name,
+            slot.rmt_name,
+            slot.start_at,
+            slot.duration_minutes,
+        )
+        if key in seen:
+            continue
+        seen.add(key)
+        unique.append(slot)
+    return unique
+
+
 @app.get("/api/availability")
 def availability(city: str | None = None):
     storage = Storage(config.db_path())
@@ -31,6 +60,7 @@ def availability(city: str | None = None):
     run, slots = good if good else (None, [])
     if city is not None:
         slots = [slot for slot in slots if slot.city.lower() == city.lower()]
+    slots = _dedupe_slots(slots)
     return {
         "scraped_at": run.finished_at if run else None,
         "latest_attempt_at": latest.finished_at if latest else None,

@@ -231,3 +231,55 @@ def test_availability_returns_latest_good_runs_slots(tmp_path, monkeypatch):
             "booking_url": "https://example.com/book",
         }
     ]
+
+
+def test_availability_collapses_one_opening_listed_under_two_treatments(
+    tmp_path, monkeypatch
+):
+    # Same therapist, clinic, time and duration under an "Initial" and a plain
+    # treatment is one physical opening — the frontend can't tell the rows
+    # apart, so the envelope should carry it once.
+    client, storage = make_client(tmp_path, monkeypatch)
+    run_id = storage.record_run(
+        started_at="2026-07-09T10:00:00+00:00",
+        finished_at="2026-07-09T10:01:30+00:00",
+        attempted=1,
+        succeeded=1,
+        failed_clinics=[],
+    )
+    storage.insert_slots(
+        run_id,
+        [
+            make_slot(treatment_name="Initial 60 minute RMT Session"),
+            make_slot(treatment_name="60 minute RMT Session"),
+        ],
+    )
+
+    body = client.get("/api/availability").json()
+
+    assert len(body["slots"]) == 1
+
+
+def test_availability_keeps_genuinely_distinct_openings(tmp_path, monkeypatch):
+    # Differ by therapist, start time, or duration → not duplicates, all kept.
+    client, storage = make_client(tmp_path, monkeypatch)
+    run_id = storage.record_run(
+        started_at="2026-07-09T10:00:00+00:00",
+        finished_at="2026-07-09T10:01:30+00:00",
+        attempted=1,
+        succeeded=1,
+        failed_clinics=[],
+    )
+    storage.insert_slots(
+        run_id,
+        [
+            make_slot(),
+            make_slot(rmt_name="Other Therapist"),
+            make_slot(start_at="2026-07-10T10:00:00-07:00"),
+            make_slot(duration_minutes=90),
+        ],
+    )
+
+    body = client.get("/api/availability").json()
+
+    assert len(body["slots"]) == 4

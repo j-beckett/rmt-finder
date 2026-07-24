@@ -105,8 +105,17 @@ class JaneAppAdapter(BaseAdapter):
             return {}
 
     def _build_staff_lookup(self, staff_members: list) -> dict:
-        """Build a staff_id -> name dictionary."""
-        return {s["id"]: s["professional_name"] for s in staff_members}
+        """Build a staff_id -> name dictionary.
+
+        Jane double-HTML-escapes the JSON embedded in its page, so the single
+        unescape in _fetch_router_options only peels the outer layer and leaves
+        entities behind in string values (e.g. 'Joseph &quot;Stephane&quot;
+        Gaudet'). Unescape the name here, after JSON parsing, where turning
+        &quot; back into " is safe and can't break the surrounding structure.
+        """
+        return {
+            s["id"]: html.unescape(s["professional_name"]) for s in staff_members
+        }
 
     def _map_services(self, clinic, disciplines: list, treatments: list) -> dict:
         service_map = {}
@@ -139,7 +148,8 @@ class JaneAppAdapter(BaseAdapter):
                     "treatment_id": t["id"],
                     "discipline_id": t["discipline_id"],
                     "duration_minutes": t["treatment_duration"] // 60,
-                    "name": t["name"],
+                    # Same double-escaping as staff names (see _build_staff_lookup).
+                    "name": html.unescape(t["name"]),
                 }
                 for t in treatments
                 if t["discipline_id"] in matching_discipline_ids
