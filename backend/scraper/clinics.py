@@ -125,6 +125,13 @@ CLINICS = [
     jane_rmt("Optimal Health Massage Therapy", "optimalhealthmassage"),
     jane_rmt("Glow Integrative Clinic", "glowintegrative"),
     jane_rmt("Heart of the Village Massage Therapy", "heartofthevillagemassagetherapy"),
+    # Added 2026-07-23 after web search + location verification
+    jane_rmt("Atlas Health Therapy", "atlashealththerapy"),
+    jane_rmt("Discovery Health", "discoveryhealth"),
+    jane_rmt("Wild Cove Massage Therapy", "wildcovemassagetherapy"),
+    # Acupuncture-heavy clinic that also lists specialized "Breast Massage"
+    # treatments under massage therapy; keep those out of general RMT results.
+    jane_rmt("Pearl Healthcare", "pearlhealthcare", extra_excludes=["breast"]),
     # Names its discipline just "Massage" (not "Massage Therapy") and sells
     # non-RMT massage under it, so it needs a per-clinic override.
     jane_rmt(
