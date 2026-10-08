@@ -88,3 +88,17 @@ def test_scrape_interval_reads_env_var(monkeypatch):
     monkeypatch.setenv("SCRAPE_INTERVAL_MINUTES", "5")
 
     assert config.scrape_interval_minutes() == 5
+
+
+def test_retention_defaults_to_seven_days(monkeypatch):
+    monkeypatch.delenv("RETENTION_DAYS", raising=False)
+
+    assert config.retention_days() == 7
+
+
+def test_retention_reads_env_var_and_zero_means_keep_everything(monkeypatch):
+    monkeypatch.setenv("RETENTION_DAYS", "30")
+    assert config.retention_days() == 30
+
+    monkeypatch.setenv("RETENTION_DAYS", "0")
+    assert config.retention_days() == 0

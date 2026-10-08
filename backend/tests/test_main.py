@@ -1,3 +1,6 @@
+import sqlite3
+from datetime import datetime, timedelta, timezone
+
 import main as main_module
 from scraper.models import AvailabilityResult, RunResult, ServiceType
 from storage import Storage
@@ -119,3 +122,80 @@ def test_main_scrapes_every_city_in_the_roster(monkeypatch, tmp_path):
     assert calls == ["vancouver", "victoria"]
     assert storage.latest_run("victoria") is not None
     assert storage.latest_run("vancouver") is not None
+
+
+def record_old_run(storage, days_ago, slots):
+    """A good Victoria run that finished `days_ago` days ago, with `slots` slots."""
+    finished_at = (datetime.now(timezone.utc) - timedelta(days=days_ago)).isoformat()
+    run_id = storage.record_run(
+        city="victoria",
+        started_at=finished_at,
+        finished_at=finished_at,
+        attempted=1,
+        succeeded=1,
+        failed_clinics=[],
+    )
+    storage.insert_slots(run_id, [make_slot() for _ in range(slots)])
+    return run_id
+
+
+def slot_run_ids(db_path):
+    with sqlite3.connect(db_path) as conn:
+        return {row[0] for row in conn.execute("SELECT DISTINCT run_id FROM slots")}
+
+
+def test_scrape_city_prunes_old_slots_after_a_successful_scrape(
+    monkeypatch, capsys, tmp_path
+):
+    db_path = str(tmp_path / "test.db")
+    monkeypatch.setenv("RMT_FINDER_DB_PATH", db_path)
+    monkeypatch.delenv("RETENTION_DAYS", raising=False)
+    storage = migrated_storage(db_path)
+    old_run = record_old_run(storage, days_ago=10, slots=3)
+    monkeypatch.setattr(main_module, "run_all", fake_run_all_recording([]))
+
+    main_module.scrape_city("victoria")
+
+    new_run = storage.latest_run("victoria").id
+    assert slot_run_ids(db_path) == {new_run}
+    assert old_run != new_run
+    assert "Pruned 3 slot(s) older than 7 day(s)" in capsys.readouterr().out
+
+
+def test_scrape_city_does_not_prune_when_no_clinic_succeeded(
+    monkeypatch, capsys, tmp_path
+):
+    # Two old good runs: the newer one is protected as the latest good run
+    # anyway, so only the older one shows whether a failed scrape pruned.
+    db_path = str(tmp_path / "test.db")
+    monkeypatch.setenv("RMT_FINDER_DB_PATH", db_path)
+    monkeypatch.delenv("RETENTION_DAYS", raising=False)
+    storage = migrated_storage(db_path)
+    older = record_old_run(storage, days_ago=12, slots=2)
+    latest_good = record_old_run(storage, days_ago=10, slots=2)
+    monkeypatch.setattr(
+        main_module,
+        "run_all",
+        lambda city=None: RunResult(
+            slots=[], attempted=["Broken Clinic"], succeeded=[], failed=["Broken Clinic"]
+        ),
+    )
+
+    main_module.scrape_city("victoria")
+
+    assert slot_run_ids(db_path) == {older, latest_good}
+    assert "Pruned" not in capsys.readouterr().out
+
+
+def test_scrape_city_prints_nothing_about_pruning_when_nothing_was_old(
+    monkeypatch, capsys, tmp_path
+):
+    db_path = str(tmp_path / "test.db")
+    monkeypatch.setenv("RMT_FINDER_DB_PATH", db_path)
+    monkeypatch.delenv("RETENTION_DAYS", raising=False)
+    migrated_storage(db_path)
+    monkeypatch.setattr(main_module, "run_all", fake_run_all_recording([]))
+
+    main_module.scrape_city("victoria")
+
+    assert "Pruned" not in capsys.readouterr().out

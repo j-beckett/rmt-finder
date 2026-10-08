@@ -3,6 +3,7 @@ import os
 import sqlite3
 from contextlib import contextmanager
 from dataclasses import dataclass
+from datetime import datetime, timedelta, timezone
 
 from scraper.models import AvailabilityResult, ServiceType
 
@@ -184,6 +185,48 @@ class Storage:
                     for slot in slots
                 ],
             )
+
+    def prune_slots(
+        self, city: str, retention_days: int, now: datetime | None = None
+    ) -> int:
+        """Delete a city's slots from runs that finished more than
+        retention_days ago.
+
+        Returns the number of slot rows deleted; retention_days <= 0 keeps
+        everything. scrape_runs rows are never deleted (they are the health
+        history). The city's latest good run is always kept, however old,
+        because latest_good_run serves it when that city's scrapes keep
+        failing. Scoped to one city so each scrape prunes only its own data.
+
+        Runs below the oldest run_id still in slots have nothing left to
+        delete, so they are skipped: the cost tracks the retention window,
+        not the ever-growing scrape_runs history. (A city whose scrapes have
+        failed for a long time holds that bound back via its protected run,
+        which only widens the range scanned; results are unaffected.)
+
+        julianday() parses the stored offset and compares instants in UTC, so
+        a finished_at written with any offset is aged correctly (a string
+        comparison only works while every writer uses +00:00). An unparseable
+        timestamp gives NULL, so that run is kept. Postgres equivalent:
+        finished_at::timestamptz < $1.
+        """
+        if retention_days <= 0:
+            return 0
+        now = now or datetime.now(timezone.utc)
+        cutoff = (now - timedelta(days=retention_days)).isoformat()
+        with self._connect() as conn:
+            cursor = conn.execute(
+                "DELETE FROM slots WHERE run_id IN ("
+                " SELECT id FROM scrape_runs"
+                " WHERE city = ? AND id >= (SELECT MIN(run_id) FROM slots)"
+                " AND julianday(finished_at) < julianday(?)"
+                " AND id NOT IN ("
+                "  SELECT id FROM scrape_runs"
+                "  WHERE city = ? AND clinics_succeeded > 0"
+                "  ORDER BY id DESC LIMIT 1))",
+                (city, cutoff, city),
+            )
+            return cursor.rowcount
 
     @staticmethod
     def _run_record(row) -> RunRecord:

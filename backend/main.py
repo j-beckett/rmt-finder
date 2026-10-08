@@ -33,6 +33,15 @@ def scrape_city(city: str):
         print(f"Failed clinics: {', '.join(result.failed)}")
     print(f"{len(result.slots)} slot(s) recorded")
 
+    # Prune only on the back of a good scrape: a failing scraper must never
+    # be what deletes data. (prune_slots also always keeps each city's latest
+    # good run, the API's fallback.)
+    if result.succeeded:
+        retention_days = config.retention_days()
+        pruned = storage.prune_slots(city, retention_days)
+        if pruned:
+            print(f"Pruned {pruned} slot(s) older than {retention_days} day(s)")
+
 
 def main():
     """Scrape every city in the roster, one after another (local CLI)."""

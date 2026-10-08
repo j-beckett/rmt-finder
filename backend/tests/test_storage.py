@@ -1,4 +1,5 @@
 import sqlite3
+from datetime import datetime, timedelta, timezone
 
 import pytest
 
@@ -502,3 +503,167 @@ def test_latest_good_run_is_scoped_to_the_city(tmp_path):
     assert vancouver_run.id == vancouver_id
     assert [s.clinic_name for s in vancouver_slots] == ["Van Clinic"]
     assert storage.latest_good_run("nowhere") is None
+
+
+# --- retention -------------------------------------------------------------
+
+NOW = datetime(2026, 10, 8, 12, 0, tzinfo=timezone.utc)
+
+
+def add_run(storage, finished_at, city="victoria", succeeded=1, slots=2):
+    """A run that finished at `finished_at` (aware datetime or ISO string)
+    with `slots` slot rows."""
+    if isinstance(finished_at, datetime):
+        finished_at = finished_at.isoformat()
+    run_id = storage.record_run(
+        city=city,
+        started_at=finished_at,
+        finished_at=finished_at,
+        attempted=1,
+        succeeded=succeeded,
+        failed_clinics=[],
+    )
+    storage.insert_slots(run_id, [make_slot(city=city) for _ in range(slots)])
+    return run_id
+
+
+def slot_counts(db_path):
+    """{run_id: number of slot rows} for every run that still has slots."""
+    with sqlite3.connect(db_path) as conn:
+        rows = conn.execute(
+            "SELECT run_id, COUNT(*) FROM slots GROUP BY run_id"
+        ).fetchall()
+    return dict(rows)
+
+
+def test_prune_slots_deletes_slots_of_runs_older_than_retention(tmp_path):
+    db_path = str(tmp_path / "test.db")
+    storage = migrated_storage(db_path)
+    old = add_run(storage, NOW - timedelta(days=8))
+    recent = add_run(storage, NOW - timedelta(days=6))
+    newest = add_run(storage, NOW - timedelta(minutes=15))
+
+    deleted = storage.prune_slots("victoria", retention_days=7, now=NOW)
+
+    assert deleted == 2
+    assert slot_counts(db_path) == {recent: 2, newest: 2}
+    assert old not in slot_counts(db_path)
+
+
+def run_ids(db_path):
+    with sqlite3.connect(db_path) as conn:
+        return [row[0] for row in conn.execute("SELECT id FROM scrape_runs ORDER BY id")]
+
+
+def test_prune_slots_keeps_every_scrape_run_row(tmp_path):
+    # scrape_runs is the health history: tiny, and kept forever.
+    db_path = str(tmp_path / "test.db")
+    storage = migrated_storage(db_path)
+    ids = [add_run(storage, NOW - timedelta(days=d)) for d in (30, 8, 1)]
+
+    storage.prune_slots("victoria", retention_days=7, now=NOW)
+
+    assert run_ids(db_path) == ids
+
+
+def test_prune_slots_keeps_latest_good_run_even_when_older_than_cutoff(tmp_path):
+    # Scrapes have been failing for 10 days: the last good run is the
+    # fallback the API serves, so its slots must survive.
+    db_path = str(tmp_path / "test.db")
+    storage = migrated_storage(db_path)
+    older_good = add_run(storage, NOW - timedelta(days=12))
+    latest_good = add_run(storage, NOW - timedelta(days=10))
+
+    deleted = storage.prune_slots("victoria", retention_days=7, now=NOW)
+
+    assert deleted == 2
+    assert slot_counts(db_path) == {latest_good: 2}
+    assert older_good not in slot_counts(db_path)
+
+
+def test_prune_slots_protects_latest_good_run_per_city(tmp_path):
+    # Victoria scraped fine just now; Vancouver's scrapes have been failing
+    # for 10 days. Vancouver's last good run is its fallback and must survive
+    # even though Victoria has a newer good run.
+    db_path = str(tmp_path / "test.db")
+    storage = migrated_storage(db_path)
+    van_older = add_run(storage, NOW - timedelta(days=12), city="vancouver")
+    van_latest = add_run(storage, NOW - timedelta(days=10), city="vancouver")
+    vic_old = add_run(storage, NOW - timedelta(days=9), city="victoria")
+    vic_latest = add_run(storage, NOW - timedelta(minutes=15), city="victoria")
+
+    storage.prune_slots("vancouver", retention_days=7, now=NOW)
+    storage.prune_slots("victoria", retention_days=7, now=NOW)
+
+    assert slot_counts(db_path) == {van_latest: 2, vic_latest: 2}
+    assert van_older not in slot_counts(db_path)
+    assert vic_old not in slot_counts(db_path)
+
+
+def test_prune_slots_protection_skips_newer_zero_success_runs(tmp_path):
+    # The newest run failed entirely; protection follows the latest *good*
+    # run (what latest_good_run serves), not the latest attempt.
+    db_path = str(tmp_path / "test.db")
+    storage = migrated_storage(db_path)
+    latest_good = add_run(storage, NOW - timedelta(days=10))
+    add_run(storage, NOW - timedelta(days=9), succeeded=0, slots=0)
+
+    storage.prune_slots("victoria", retention_days=7, now=NOW)
+
+    assert slot_counts(db_path) == {latest_good: 2}
+
+
+def test_prune_slots_compares_instants_not_strings_across_utc_offsets(tmp_path):
+    # Cutoff is 2026-10-01T12:00+00:00. Each run's string sorts on the wrong
+    # side of it; only comparing instants gets both right.
+    db_path = str(tmp_path / "test.db")
+    storage = migrated_storage(db_path)
+    newer = add_run(storage, "2026-10-01T11:00:00-07:00")  # 18:00 UTC: keep
+    older = add_run(storage, "2026-10-01T13:00:00+05:00")  # 08:00 UTC: prune
+    latest_good = add_run(storage, NOW)
+
+    storage.prune_slots("victoria", retention_days=7, now=NOW)
+
+    assert slot_counts(db_path) == {newer: 2, latest_good: 2}
+    assert older not in slot_counts(db_path)
+
+
+def test_prune_slots_with_zero_retention_keeps_everything(tmp_path):
+    db_path = str(tmp_path / "test.db")
+    storage = migrated_storage(db_path)
+    old = add_run(storage, NOW - timedelta(days=400))
+    latest_good = add_run(storage, NOW)
+
+    deleted = storage.prune_slots("victoria", retention_days=0, now=NOW)
+
+    assert deleted == 0
+    assert slot_counts(db_path) == {old: 2, latest_good: 2}
+
+
+def test_prune_slots_keeps_runs_whose_finished_at_cannot_be_parsed(tmp_path):
+    # Fail safe: if a timestamp can't be aged, don't delete on a guess.
+    db_path = str(tmp_path / "test.db")
+    storage = migrated_storage(db_path)
+    unparseable = add_run(storage, "not a timestamp")
+    latest_good = add_run(storage, NOW)
+
+    storage.prune_slots("victoria", retention_days=7, now=NOW)
+
+    assert slot_counts(db_path) == {unparseable: 2, latest_good: 2}
+
+
+def test_prune_slots_only_touches_the_given_city(tmp_path):
+    # Each city's scrape prunes its own slots; Vancouver's old slots wait
+    # for Vancouver's next good scrape.
+    db_path = str(tmp_path / "test.db")
+    storage = migrated_storage(db_path)
+    van_old = add_run(storage, NOW - timedelta(days=9), city="vancouver")
+    van_latest = add_run(storage, NOW, city="vancouver")
+    vic_old = add_run(storage, NOW - timedelta(days=9), city="victoria")
+    vic_latest = add_run(storage, NOW, city="victoria")
+
+    deleted = storage.prune_slots("victoria", retention_days=7, now=NOW)
+
+    assert deleted == 2
+    assert slot_counts(db_path) == {van_old: 2, van_latest: 2, vic_latest: 2}
+    assert vic_old not in slot_counts(db_path)

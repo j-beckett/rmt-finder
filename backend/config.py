@@ -52,6 +52,16 @@ def scrape_interval_minutes() -> int:
     return int(os.environ.get("SCRAPE_INTERVAL_MINUTES", "15"))
 
 
+def retention_days() -> int:
+    """Days of slot history to keep, via RETENTION_DAYS; 0 keeps everything.
+
+    Measured by when a run finished, not when its slots start. Only slots are
+    pruned (scrape_runs is the health history and is kept), and each city's
+    latest good run survives regardless, since the API falls back to it.
+    """
+    return int(os.environ.get("RETENTION_DAYS", "7"))
+
+
 def frontend_dist_path() -> str:
     """Built frontend location, overridable via RMT_FINDER_FRONTEND_DIST."""
     return os.environ.get(
