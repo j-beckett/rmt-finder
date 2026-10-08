@@ -1,6 +1,7 @@
 import json
 import os
 import sqlite3
+from contextlib import contextmanager
 from dataclasses import dataclass
 
 from scraper.models import AvailabilityResult, ServiceType
@@ -18,30 +19,49 @@ class RunRecord:
     failed_clinics: list[str]
 
 
-SCHEMA = """
-CREATE TABLE IF NOT EXISTS scrape_runs (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
-    started_at TEXT NOT NULL,
-    finished_at TEXT NOT NULL,
-    clinics_attempted INTEGER NOT NULL,
-    clinics_succeeded INTEGER NOT NULL,
-    failed_clinics TEXT NOT NULL
-);
+# How long a connection waits on another process's write lock before giving
+# up. The API reads while the scheduler writes, so brief contention is normal.
+BUSY_TIMEOUT_SECONDS = 10
 
-CREATE TABLE IF NOT EXISTS slots (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
-    run_id INTEGER NOT NULL REFERENCES scrape_runs(id),
-    clinic_name TEXT NOT NULL,
-    city TEXT NOT NULL,
-    platform TEXT NOT NULL,
-    rmt_name TEXT NOT NULL,
-    service_type TEXT NOT NULL,
-    treatment_name TEXT NOT NULL,
-    duration_minutes INTEGER NOT NULL,
-    start_at TEXT NOT NULL,
-    booking_url TEXT NOT NULL
-);
-"""
+
+class SchemaOutOfDateError(RuntimeError):
+    """The database has fewer migrations applied than the code expects."""
+
+
+# Ordered schema migrations; the schema version is the 1-based index of the
+# last one applied (stored in PRAGMA user_version). Append, never edit: a
+# migration that has shipped has already run against production. Migration 1
+# is the original schema, kept IF NOT EXISTS so a database created before
+# versioning existed (tables present, user_version 0) lands on version 1.
+MIGRATIONS: list[list[str]] = [
+    [
+        """
+        CREATE TABLE IF NOT EXISTS scrape_runs (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            started_at TEXT NOT NULL,
+            finished_at TEXT NOT NULL,
+            clinics_attempted INTEGER NOT NULL,
+            clinics_succeeded INTEGER NOT NULL,
+            failed_clinics TEXT NOT NULL
+        )
+        """,
+        """
+        CREATE TABLE IF NOT EXISTS slots (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            run_id INTEGER NOT NULL REFERENCES scrape_runs(id),
+            clinic_name TEXT NOT NULL,
+            city TEXT NOT NULL,
+            platform TEXT NOT NULL,
+            rmt_name TEXT NOT NULL,
+            service_type TEXT NOT NULL,
+            treatment_name TEXT NOT NULL,
+            duration_minutes INTEGER NOT NULL,
+            start_at TEXT NOT NULL,
+            booking_url TEXT NOT NULL
+        )
+        """,
+    ],
+]
 
 
 class Storage:
@@ -52,11 +72,56 @@ class Storage:
         parent = os.path.dirname(db_path)
         if parent:
             os.makedirs(parent, exist_ok=True)
-        with self._connect() as conn:
-            conn.executescript(SCHEMA)
 
-    def _connect(self) -> sqlite3.Connection:
-        return sqlite3.connect(self.db_path)
+    @contextmanager
+    def _connect(self):
+        """A short-lived connection: commit on success, roll back on error,
+        always close. (sqlite3's own `with conn` commits/rolls back but
+        leaves the connection open until garbage collected.)"""
+        conn = sqlite3.connect(self.db_path, timeout=BUSY_TIMEOUT_SECONDS)
+        try:
+            with conn:
+                yield conn
+        finally:
+            conn.close()
+
+    def require_current(self) -> None:
+        """Raise SchemaOutOfDateError unless every migration has been applied.
+
+        Long-running processes call this at startup so a deploy that forgot
+        to migrate fails loudly instead of on the first query.
+        """
+        with self._connect() as conn:
+            version = conn.execute("PRAGMA user_version").fetchone()[0]
+        if version < len(MIGRATIONS):
+            raise SchemaOutOfDateError(
+                f"Database schema is at version {version} but the code expects"
+                f" {len(MIGRATIONS)}. Run: python backend/migrate.py"
+            )
+
+    def migrate(self) -> int:
+        """Apply pending migrations in order; return the resulting version."""
+        conn = sqlite3.connect(
+            self.db_path, isolation_level=None, timeout=BUSY_TIMEOUT_SECONDS
+        )
+        try:
+            # WAL lets the API read while the scheduler writes. It persists in
+            # the database file, so setting it once here covers every later
+            # connection; it can't be changed inside a transaction.
+            conn.execute("PRAGMA journal_mode = WAL")
+            conn.execute("BEGIN IMMEDIATE")
+            version = conn.execute("PRAGMA user_version").fetchone()[0]
+            for number, statements in enumerate(MIGRATIONS, start=1):
+                if number <= version:
+                    continue
+                for statement in statements:
+                    conn.execute(statement)
+                version = number
+            conn.execute(f"PRAGMA user_version = {version}")
+            conn.execute("COMMIT")
+            return version
+        finally:
+            conn.close()
 
     def record_run(
         self,

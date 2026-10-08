@@ -30,5 +30,13 @@ def main():
     print(f"{len(result.slots)} slot(s) recorded")
 
 
-if __name__ == "__main__":
+def cli():
+    """Local entry point. Migrates first so `python main.py` works on a fresh
+    checkout; main() itself never migrates because the scheduler calls it every
+    cycle and the deploy (migrate.py) owns schema changes in production."""
+    Storage(config.db_path()).migrate()
     main()
+
+
+if __name__ == "__main__":
+    cli()

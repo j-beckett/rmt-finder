@@ -31,6 +31,8 @@ def run_once(scrape=main.main):
 
 def run_forever(scrape=main.main, sleep=time.sleep):
     """Scrape immediately on startup, then every SCRAPE_INTERVAL_MINUTES."""
+    # Fail loudly at boot if a deploy forgot migrate.py, not on the first write.
+    Storage(config.db_path()).require_current()
     interval_seconds = config.scrape_interval_minutes() * 60
     while True:
         run_once(scrape)

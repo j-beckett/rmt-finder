@@ -10,6 +10,10 @@ cd "$HOME/rmt-finder"
 git pull --ff-only
 venv/bin/pip install --quiet -r requirements.txt
 
+# Apply pending DB migrations before the new code starts. If this fails,
+# `set -e` aborts the deploy and the old services keep running untouched.
+venv/bin/python backend/migrate.py
+
 # Must match the sudoers entry in /etc/sudoers.d/rmt-deploy exactly
 # (sudoers matches on the full argument list).
 sudo systemctl restart rmt-api rmt-scheduler

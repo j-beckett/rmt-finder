@@ -3,7 +3,8 @@ import logging
 import pytest
 
 import scheduler
-from storage import Storage
+from storage import SchemaOutOfDateError, Storage
+from tests.helpers import migrated_storage
 
 
 def test_failing_scrape_records_failed_run_and_does_not_raise(
@@ -11,6 +12,7 @@ def test_failing_scrape_records_failed_run_and_does_not_raise(
 ):
     db_path = tmp_path / "test.db"
     monkeypatch.setenv("RMT_FINDER_DB_PATH", str(db_path))
+    migrated_storage(str(db_path))
 
     def exploding_scrape():
         raise RuntimeError("network down")
@@ -32,6 +34,7 @@ def test_successful_scrape_is_called_once_and_records_nothing_extra(
 ):
     db_path = tmp_path / "test.db"
     monkeypatch.setenv("RMT_FINDER_DB_PATH", str(db_path))
+    migrated_storage(str(db_path))
     calls = []
 
     scheduler.run_once(scrape=lambda: calls.append(1))
@@ -42,6 +45,7 @@ def test_successful_scrape_is_called_once_and_records_nothing_extra(
 
 def test_run_forever_scrapes_immediately_then_sleeps_interval(monkeypatch, tmp_path):
     monkeypatch.setenv("RMT_FINDER_DB_PATH", str(tmp_path / "test.db"))
+    migrated_storage(str(tmp_path / "test.db"))
     monkeypatch.setenv("SCRAPE_INTERVAL_MINUTES", "5")
     events = []
 
@@ -64,6 +68,7 @@ def test_run_forever_continues_to_next_cycle_after_failing_scrape(
 ):
     db_path = tmp_path / "test.db"
     monkeypatch.setenv("RMT_FINDER_DB_PATH", str(db_path))
+    migrated_storage(str(db_path))
     calls = []
 
     def flaky_scrape():
@@ -81,3 +86,16 @@ def test_run_forever_continues_to_next_cycle_after_failing_scrape(
     assert len(calls) == 2
     run = Storage(str(db_path)).latest_run()
     assert run.clinics_succeeded == 0
+
+
+def test_run_forever_refuses_to_start_on_a_stale_schema(monkeypatch, tmp_path):
+    monkeypatch.setenv("RMT_FINDER_DB_PATH", str(tmp_path / "unmigrated.db"))
+    calls = []
+
+    def stop_after_first_cycle(seconds):
+        raise KeyboardInterrupt
+
+    with pytest.raises(SchemaOutOfDateError, match="migrate.py"):
+        scheduler.run_forever(scrape=lambda: calls.append(1), sleep=stop_after_first_cycle)
+
+    assert calls == []

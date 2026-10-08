@@ -32,7 +32,14 @@ rmt-finder scrapes RMT (registered massage therapist) availability from clinic b
 ```bash
 venv\Scripts\python.exe backend\main.py   # run the scraper
 venv\Scripts\python.exe -m pytest         # run tests
+venv\Scripts\python.exe backend\migrate.py  # apply pending DB migrations
 ```
+
+Schema changes are migrations (append to `MIGRATIONS` in `backend/storage.py`,
+never edit a shipped one). `Storage()` does not create tables: the deploy runs
+`migrate.py` before restarting services, and the API and scheduler refuse to
+start if the schema is behind. `python main.py` migrates automatically for
+local use. Design notes: `docs/plans/storage-hardening/decisions.md`.
 
 ## Definition of done (every feature)
 

@@ -1,8 +1,20 @@
+import pytest
 from fastapi import FastAPI
 from fastapi.testclient import TestClient
 
 from scraper.models import AvailabilityResult, ServiceType
-from storage import Storage
+from storage import SchemaOutOfDateError
+from tests.helpers import migrated_storage
+
+
+@pytest.fixture(autouse=True)
+def clear_dependency_overrides():
+    # make_client overrides get_storage on the shared app; don't leak a
+    # deleted tmp database into the next test.
+    yield
+    from api import app
+
+    app.dependency_overrides.clear()
 
 
 def make_slot(**overrides):
@@ -24,11 +36,11 @@ def make_slot(**overrides):
 
 def make_client(tmp_path, monkeypatch):
     db_path = tmp_path / "test.db"
-    monkeypatch.setenv("RMT_FINDER_DB_PATH", str(db_path))
-    storage = Storage(str(db_path))
+    storage = migrated_storage(str(db_path))
 
-    from api import app
+    from api import app, get_storage
 
+    app.dependency_overrides[get_storage] = lambda: storage
     return TestClient(app), storage
 
 
@@ -283,3 +295,22 @@ def test_availability_keeps_genuinely_distinct_openings(tmp_path, monkeypatch):
     body = client.get("/api/availability").json()
 
     assert len(body["slots"]) == 4
+
+
+def test_api_refuses_to_start_on_a_stale_schema(tmp_path, monkeypatch):
+    monkeypatch.setenv("RMT_FINDER_DB_PATH", str(tmp_path / "test.db"))
+    from api import app
+
+    with pytest.raises(SchemaOutOfDateError, match="migrate.py"):
+        with TestClient(app):
+            pass
+
+
+def test_api_starts_on_a_migrated_schema(tmp_path, monkeypatch):
+    db_path = tmp_path / "test.db"
+    migrated_storage(str(db_path))
+    monkeypatch.setenv("RMT_FINDER_DB_PATH", str(db_path))
+    from api import app
+
+    with TestClient(app) as client:
+        assert client.get("/api/availability").status_code == 200

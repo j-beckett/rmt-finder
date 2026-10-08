@@ -1,7 +1,8 @@
 import os
+from contextlib import asynccontextmanager
 from dataclasses import asdict
 
-from fastapi import FastAPI
+from fastapi import Depends, FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 
@@ -9,12 +10,28 @@ import config
 from scraper.clinics import CLINICS
 from storage import Storage
 
-app = FastAPI()
+
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    """Refuse to start on a stale schema. The deploy runs migrate.py before
+    restarting; this makes a forgotten migration fail loudly at boot."""
+    get_storage().require_current()
+    yield
+
+
+app = FastAPI(lifespan=lifespan)
 app.add_middleware(
     CORSMiddleware,
     allow_origins=[config.frontend_origin()],
     allow_methods=["GET"],
 )
+
+
+def get_storage() -> Storage:
+    """FastAPI dependency. Reads the path per call so config (and tests) can
+    point at a different database; construction is cheap."""
+    return Storage(config.db_path())
 
 
 def _slot_dict(slot) -> dict:
@@ -53,8 +70,7 @@ def _dedupe_slots(slots: list) -> list:
 
 
 @app.get("/api/availability")
-def availability(city: str | None = None):
-    storage = Storage(config.db_path())
+def availability(city: str | None = None, storage: Storage = Depends(get_storage)):
     good = storage.latest_good_run()
     latest = storage.latest_run()
     run, slots = good if good else (None, [])

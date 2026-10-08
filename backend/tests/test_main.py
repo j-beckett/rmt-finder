@@ -1,6 +1,7 @@
 import main as main_module
 from scraper.models import AvailabilityResult, RunResult, ServiceType
 from storage import Storage
+from tests.helpers import migrated_storage
 
 
 def make_slot():
@@ -21,6 +22,7 @@ def test_main_writes_snapshot_and_prints_summary(monkeypatch, capsys, tmp_path):
     db_path = tmp_path / "test.db"
     monkeypatch.setenv("RMT_FINDER_DB_PATH", str(db_path))
     monkeypatch.chdir(tmp_path)
+    migrated_storage(str(db_path))
     fake_result = RunResult(
         slots=[make_slot()],
         attempted=["Good Clinic", "Broken Clinic"],
@@ -44,3 +46,26 @@ def test_main_writes_snapshot_and_prints_summary(monkeypatch, capsys, tmp_path):
     assert "1 slot(s) recorded" in out
 
     assert list(tmp_path.rglob("*.json")) == []
+
+
+def test_cli_migrates_a_fresh_database_before_scraping(monkeypatch, tmp_path):
+    # The local `python main.py` workflow must keep working on a brand-new
+    # database without a separate migrate step.
+    db_path = tmp_path / "fresh.db"
+    monkeypatch.setenv("RMT_FINDER_DB_PATH", str(db_path))
+    monkeypatch.chdir(tmp_path)
+    monkeypatch.setattr(
+        main_module,
+        "run_all",
+        lambda city=None: RunResult(
+            slots=[make_slot()],
+            attempted=["Good Clinic"],
+            succeeded=["Good Clinic"],
+            failed=[],
+        ),
+    )
+
+    main_module.cli()
+
+    run, _ = Storage(str(db_path)).latest_good_run()
+    assert run.clinics_succeeded == 1
