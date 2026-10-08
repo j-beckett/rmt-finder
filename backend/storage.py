@@ -12,6 +12,7 @@ class RunRecord:
     """A scrape_runs row read back from the database."""
 
     id: int
+    city: str
     started_at: str
     finished_at: str
     clinics_attempted: int
@@ -60,6 +61,18 @@ MIGRATIONS: list[list[str]] = [
             booking_url TEXT NOT NULL
         )
         """,
+    ],
+    [
+        # Runs belong to a city. Existing rows were all Victoria runs, which
+        # the default backfills; it stays as a safety net, and record_run()
+        # still requires an explicit city so a forgotten one fails loudly.
+        "ALTER TABLE scrape_runs ADD COLUMN city TEXT NOT NULL DEFAULT 'victoria'",
+        # "Latest run for a city" and "slots of a run / of a city by time".
+        "CREATE INDEX IF NOT EXISTS idx_scrape_runs_city_id"
+        " ON scrape_runs (city, id)",
+        "CREATE INDEX IF NOT EXISTS idx_slots_city_start_at"
+        " ON slots (city, start_at)",
+        "CREATE INDEX IF NOT EXISTS idx_slots_run_id ON slots (run_id)",
     ],
 ]
 
@@ -125,6 +138,7 @@ class Storage:
 
     def record_run(
         self,
+        city: str,
         started_at: str,
         finished_at: str,
         attempted: int,
@@ -133,10 +147,11 @@ class Storage:
     ) -> int:
         with self._connect() as conn:
             cursor = conn.execute(
-                "INSERT INTO scrape_runs (started_at, finished_at,"
+                "INSERT INTO scrape_runs (city, started_at, finished_at,"
                 " clinics_attempted, clinics_succeeded, failed_clinics)"
-                " VALUES (?, ?, ?, ?, ?)",
+                " VALUES (?, ?, ?, ?, ?, ?)",
                 (
+                    city,
                     started_at,
                     finished_at,
                     attempted,
@@ -174,36 +189,43 @@ class Storage:
     def _run_record(row) -> RunRecord:
         return RunRecord(
             id=row[0],
-            started_at=row[1],
-            finished_at=row[2],
-            clinics_attempted=row[3],
-            clinics_succeeded=row[4],
-            failed_clinics=json.loads(row[5]),
+            city=row[1],
+            started_at=row[2],
+            finished_at=row[3],
+            clinics_attempted=row[4],
+            clinics_succeeded=row[5],
+            failed_clinics=json.loads(row[6]),
         )
 
-    def latest_run(self) -> RunRecord | None:
-        """Most recent run attempted, successful or not."""
+    def latest_run(self, city: str) -> RunRecord | None:
+        """Most recent run attempted for a city, successful or not."""
         with self._connect() as conn:
             row = conn.execute(
-                "SELECT id, started_at, finished_at, clinics_attempted,"
+                "SELECT id, city, started_at, finished_at, clinics_attempted,"
                 " clinics_succeeded, failed_clinics FROM scrape_runs"
-                " ORDER BY id DESC LIMIT 1"
+                " WHERE city = ? ORDER BY id DESC LIMIT 1",
+                (city,),
             ).fetchone()
         if row is None:
             return None
         return self._run_record(row)
 
-    def latest_good_run(self) -> tuple[RunRecord, list[AvailabilityResult]] | None:
-        """Latest run with at least one successful clinic, plus its slots.
+    def latest_good_run(
+        self, city: str
+    ) -> tuple[RunRecord, list[AvailabilityResult]] | None:
+        """A city's latest run with at least one successful clinic, plus its slots.
 
         A newer zero-success run is skipped over, so this read is also the
         fallback the API serves when the latest attempt failed entirely.
+        Scoped to the city so one city's failure never hides another's data.
         """
         with self._connect() as conn:
             run_row = conn.execute(
-                "SELECT id, started_at, finished_at, clinics_attempted,"
+                "SELECT id, city, started_at, finished_at, clinics_attempted,"
                 " clinics_succeeded, failed_clinics FROM scrape_runs"
-                " WHERE clinics_succeeded > 0 ORDER BY id DESC LIMIT 1"
+                " WHERE city = ? AND clinics_succeeded > 0"
+                " ORDER BY id DESC LIMIT 1",
+                (city,),
             ).fetchone()
             if run_row is None:
                 return None

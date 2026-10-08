@@ -3,8 +3,10 @@ import sqlite3
 import pytest
 
 from scraper.models import AvailabilityResult, ServiceType
-from storage import SchemaOutOfDateError, Storage
+from storage import MIGRATIONS, SchemaOutOfDateError, Storage
 from tests.helpers import migrated_storage
+
+LATEST = len(MIGRATIONS)
 
 
 def make_slot(**overrides):
@@ -43,14 +45,15 @@ def test_migrate_creates_schema_and_sets_version(tmp_path):
     version = Storage(str(db_path)).migrate()
 
     assert {"scrape_runs", "slots"} <= table_names(db_path)
-    assert version == 1
-    assert user_version(db_path) == 1
+    assert version == LATEST
+    assert user_version(db_path) == LATEST
 
 
 def test_migrate_is_idempotent_and_keeps_data(tmp_path):
     storage = migrated_storage(str(tmp_path / "test.db"))
     storage.migrate()
     storage.record_run(
+        city="victoria",
         started_at="2026-07-09T10:00:00+00:00",
         finished_at="2026-07-09T10:01:30+00:00",
         attempted=1,
@@ -58,9 +61,9 @@ def test_migrate_is_idempotent_and_keeps_data(tmp_path):
         failed_clinics=[],
     )
 
-    assert storage.migrate() == 1
+    assert storage.migrate() == LATEST
 
-    assert storage.latest_run() is not None
+    assert storage.latest_run("victoria") is not None
 
 
 def test_migrate_adopts_pre_versioning_database(tmp_path):
@@ -100,8 +103,8 @@ def test_migrate_adopts_pre_versioning_database(tmp_path):
 
     storage = migrated_storage(str(db_path))
 
-    assert user_version(db_path) == 1
-    assert storage.latest_run().id == 1
+    assert user_version(db_path) == LATEST
+    assert storage.latest_run("victoria").id == 1
 
 
 def test_constructor_does_not_touch_the_schema(tmp_path):
@@ -186,8 +189,8 @@ def test_migrate_applies_only_pending_migrations(tmp_path, monkeypatch):
 
     version = Storage(str(db_path)).migrate()
 
-    assert version == 2
-    assert user_version(db_path) == 2
+    assert version == LATEST + 1
+    assert user_version(db_path) == LATEST + 1
     assert "extra" in table_names(db_path)
 
 
@@ -206,7 +209,7 @@ def test_failed_migration_rolls_back_completely(tmp_path, monkeypatch):
     with pytest.raises(sqlite3.OperationalError):
         Storage(str(db_path)).migrate()
 
-    assert user_version(db_path) == 1
+    assert user_version(db_path) == LATEST
     assert "half_done" not in table_names(db_path)
 
 
@@ -215,6 +218,7 @@ def test_record_run_returns_id_and_persists_fields(tmp_path):
     storage = migrated_storage(str(db_path))
 
     run_id = storage.record_run(
+        city="victoria",
         started_at="2026-07-09T10:00:00+00:00",
         finished_at="2026-07-09T10:01:30+00:00",
         attempted=3,
@@ -242,6 +246,7 @@ def test_latest_good_run_round_trips_run_and_slots(tmp_path):
     db_path = tmp_path / "test.db"
     storage = migrated_storage(str(db_path))
     run_id = storage.record_run(
+        city="victoria",
         started_at="2026-07-09T10:00:00+00:00",
         finished_at="2026-07-09T10:01:30+00:00",
         attempted=3,
@@ -250,7 +255,7 @@ def test_latest_good_run_round_trips_run_and_slots(tmp_path):
     )
     storage.insert_slots(run_id, [make_slot()])
 
-    run, slots = storage.latest_good_run()
+    run, slots = storage.latest_good_run("victoria")
 
     assert run.id == run_id
     assert run.started_at == "2026-07-09T10:00:00+00:00"
@@ -265,6 +270,7 @@ def test_latest_good_run_skips_newer_zero_success_run(tmp_path):
     db_path = tmp_path / "test.db"
     storage = migrated_storage(str(db_path))
     good_run_id = storage.record_run(
+        city="victoria",
         started_at="2026-07-09T10:00:00+00:00",
         finished_at="2026-07-09T10:01:30+00:00",
         attempted=3,
@@ -273,6 +279,7 @@ def test_latest_good_run_skips_newer_zero_success_run(tmp_path):
     )
     storage.insert_slots(good_run_id, [make_slot()])
     storage.record_run(
+        city="victoria",
         started_at="2026-07-09T10:15:00+00:00",
         finished_at="2026-07-09T10:16:30+00:00",
         attempted=3,
@@ -280,7 +287,7 @@ def test_latest_good_run_skips_newer_zero_success_run(tmp_path):
         failed_clinics=["A", "B", "C"],
     )
 
-    run, slots = storage.latest_good_run()
+    run, slots = storage.latest_good_run("victoria")
 
     assert run.id == good_run_id
     assert slots == [make_slot()]
@@ -289,13 +296,14 @@ def test_latest_good_run_skips_newer_zero_success_run(tmp_path):
 def test_latest_good_run_returns_none_on_empty_db(tmp_path):
     storage = migrated_storage(str(tmp_path / "test.db"))
 
-    assert storage.latest_good_run() is None
+    assert storage.latest_good_run("victoria") is None
 
 
 def test_latest_run_returns_newest_attempt_even_if_failed(tmp_path):
     db_path = tmp_path / "test.db"
     storage = migrated_storage(str(db_path))
     storage.record_run(
+        city="victoria",
         started_at="2026-07-09T10:00:00+00:00",
         finished_at="2026-07-09T10:01:30+00:00",
         attempted=3,
@@ -303,6 +311,7 @@ def test_latest_run_returns_newest_attempt_even_if_failed(tmp_path):
         failed_clinics=[],
     )
     failed_run_id = storage.record_run(
+        city="victoria",
         started_at="2026-07-09T10:15:00+00:00",
         finished_at="2026-07-09T10:16:30+00:00",
         attempted=3,
@@ -310,7 +319,7 @@ def test_latest_run_returns_newest_attempt_even_if_failed(tmp_path):
         failed_clinics=["A", "B", "C"],
     )
 
-    run = storage.latest_run()
+    run = storage.latest_run("victoria")
 
     assert run.id == failed_run_id
     assert run.clinics_succeeded == 0
@@ -320,13 +329,14 @@ def test_latest_run_returns_newest_attempt_even_if_failed(tmp_path):
 def test_latest_run_returns_none_on_empty_db(tmp_path):
     storage = migrated_storage(str(tmp_path / "test.db"))
 
-    assert storage.latest_run() is None
+    assert storage.latest_run("victoria") is None
 
 
 def test_insert_slots_persists_rows_with_run_fk(tmp_path):
     db_path = tmp_path / "test.db"
     storage = migrated_storage(str(db_path))
     run_id = storage.record_run(
+        city="victoria",
         started_at="2026-07-09T10:00:00+00:00",
         finished_at="2026-07-09T10:01:30+00:00",
         attempted=1,
@@ -369,3 +379,126 @@ def test_insert_slots_persists_rows_with_run_fk(tmp_path):
             "https://example.com/book",
         ),
     ]
+
+
+def test_migration_2_adds_city_and_backfills_existing_runs_as_victoria(
+    tmp_path, monkeypatch
+):
+    import storage as storage_module
+
+    db_path = tmp_path / "test.db"
+    # Build a database exactly as production has it: schema version 1, with
+    # a run recorded before runs knew about cities.
+    with monkeypatch.context() as m:
+        m.setattr(storage_module, "MIGRATIONS", storage_module.MIGRATIONS[:1])
+        Storage(str(db_path)).migrate()
+    with sqlite3.connect(db_path) as conn:
+        conn.execute(
+            "INSERT INTO scrape_runs (started_at, finished_at, clinics_attempted,"
+            " clinics_succeeded, failed_clinics) VALUES ('a', 'b', 3, 3, '[]')"
+        )
+    assert user_version(db_path) == 1
+
+    assert Storage(str(db_path)).migrate() == 2
+
+    with sqlite3.connect(db_path) as conn:
+        assert conn.execute("SELECT city FROM scrape_runs").fetchall() == [
+            ("victoria",)
+        ]
+
+
+def test_migration_2_creates_the_lookup_indexes(tmp_path):
+    db_path = tmp_path / "test.db"
+    migrated_storage(str(db_path))
+
+    with sqlite3.connect(db_path) as conn:
+        indexes = {
+            row[0]
+            for row in conn.execute(
+                "SELECT name FROM sqlite_master WHERE type = 'index'"
+            )
+        }
+
+    assert {
+        "idx_scrape_runs_city_id",
+        "idx_slots_city_start_at",
+        "idx_slots_run_id",
+    } <= indexes
+
+
+def test_record_run_persists_the_city(tmp_path):
+    db_path = tmp_path / "test.db"
+    storage = migrated_storage(str(db_path))
+
+    run_id = storage.record_run(
+        city="vancouver",
+        started_at="2026-07-09T10:00:00+00:00",
+        finished_at="2026-07-09T10:01:30+00:00",
+        attempted=2,
+        succeeded=2,
+        failed_clinics=[],
+    )
+
+    with sqlite3.connect(db_path) as conn:
+        row = conn.execute(
+            "SELECT city FROM scrape_runs WHERE id = ?", (run_id,)
+        ).fetchone()
+    assert row == ("vancouver",)
+
+
+def test_record_run_requires_a_city(tmp_path):
+    storage = migrated_storage(str(tmp_path / "test.db"))
+
+    with pytest.raises(TypeError, match="city"):
+        storage.record_run(
+            started_at="2026-07-09T10:00:00+00:00",
+            finished_at="2026-07-09T10:01:30+00:00",
+            attempted=1,
+            succeeded=1,
+            failed_clinics=[],
+        )
+
+
+def record(storage, city, finished_at, succeeded=1):
+    return storage.record_run(
+        city=city,
+        started_at=finished_at,
+        finished_at=finished_at,
+        attempted=1,
+        succeeded=succeeded,
+        failed_clinics=[],
+    )
+
+
+def test_latest_run_is_scoped_to_the_city(tmp_path):
+    storage = migrated_storage(str(tmp_path / "test.db"))
+    victoria_id = record(storage, "victoria", "2026-07-09T10:00:00+00:00")
+    record(storage, "vancouver", "2026-07-09T10:05:00+00:00")
+
+    run = storage.latest_run("victoria")
+
+    assert run.id == victoria_id
+    assert run.city == "victoria"
+    assert storage.latest_run("nowhere") is None
+
+
+def test_latest_good_run_is_scoped_to_the_city(tmp_path):
+    storage = migrated_storage(str(tmp_path / "test.db"))
+    victoria_id = record(storage, "victoria", "2026-07-09T10:00:00+00:00")
+    storage.insert_slots(victoria_id, [make_slot(city="victoria")])
+    vancouver_id = record(storage, "vancouver", "2026-07-09T10:05:00+00:00")
+    storage.insert_slots(
+        vancouver_id, [make_slot(city="vancouver", clinic_name="Van Clinic")]
+    )
+    # A newer total failure in Vancouver must not touch Victoria's good run,
+    # and Vancouver falls back to its own earlier good run.
+    record(storage, "vancouver", "2026-07-09T10:20:00+00:00", succeeded=0)
+
+    victoria_run, victoria_slots = storage.latest_good_run("victoria")
+    vancouver_run, vancouver_slots = storage.latest_good_run("vancouver")
+
+    assert victoria_run.id == victoria_id
+    assert [s.clinic_name for s in victoria_slots] == ["Test Clinic"]
+    assert vancouver_run.id == vancouver_id
+    assert [s.clinic_name for s in vancouver_slots] == ["Van Clinic"]
+    assert storage.latest_good_run("nowhere") is None

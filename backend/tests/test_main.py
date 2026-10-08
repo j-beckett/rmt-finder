@@ -33,7 +33,7 @@ def test_main_writes_snapshot_and_prints_summary(monkeypatch, capsys, tmp_path):
 
     main_module.main()
 
-    run, slots = Storage(str(db_path)).latest_good_run()
+    run, slots = Storage(str(db_path)).latest_good_run("victoria")
     assert run.clinics_attempted == 2
     assert run.clinics_succeeded == 1
     assert run.failed_clinics == ["Broken Clinic"]
@@ -67,5 +67,55 @@ def test_cli_migrates_a_fresh_database_before_scraping(monkeypatch, tmp_path):
 
     main_module.cli()
 
-    run, _ = Storage(str(db_path)).latest_good_run()
+    run, _ = Storage(str(db_path)).latest_good_run("victoria")
     assert run.clinics_succeeded == 1
+
+
+def fake_run_all_recording(calls):
+    def fake(city=None):
+        calls.append(city)
+        return RunResult(
+            slots=[make_slot()],
+            attempted=["Good Clinic"],
+            succeeded=["Good Clinic"],
+            failed=[],
+        )
+
+    return fake
+
+
+def test_scrape_city_scrapes_that_city_and_records_a_run_for_it(
+    monkeypatch, tmp_path
+):
+    db_path = tmp_path / "test.db"
+    monkeypatch.setenv("RMT_FINDER_DB_PATH", str(db_path))
+    storage = migrated_storage(str(db_path))
+    calls = []
+    monkeypatch.setattr(main_module, "run_all", fake_run_all_recording(calls))
+
+    main_module.scrape_city("vancouver")
+
+    assert calls == ["vancouver"]
+    assert storage.latest_run("vancouver").clinics_succeeded == 1
+    assert storage.latest_run("victoria") is None
+
+
+def test_main_scrapes_every_city_in_the_roster(monkeypatch, tmp_path):
+    from types import SimpleNamespace
+
+    db_path = tmp_path / "test.db"
+    monkeypatch.setenv("RMT_FINDER_DB_PATH", str(db_path))
+    storage = migrated_storage(str(db_path))
+    calls = []
+    monkeypatch.setattr(main_module, "run_all", fake_run_all_recording(calls))
+    monkeypatch.setattr(
+        main_module,
+        "CLINICS",
+        [SimpleNamespace(city="Victoria"), SimpleNamespace(city="vancouver")],
+    )
+
+    main_module.main()
+
+    assert calls == ["vancouver", "victoria"]
+    assert storage.latest_run("victoria") is not None
+    assert storage.latest_run("vancouver") is not None

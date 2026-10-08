@@ -1,4 +1,5 @@
 import migrate
+from storage import MIGRATIONS
 from storage import Storage
 
 
@@ -9,4 +10,4 @@ def test_main_migrates_the_configured_database(monkeypatch, tmp_path, capsys):
     migrate.main()
 
     Storage(str(db_path)).require_current()
-    assert "schema version 1" in capsys.readouterr().out
+    assert f"schema version {len(MIGRATIONS)}" in capsys.readouterr().out

@@ -1,18 +1,22 @@
 from datetime import datetime, timezone
 
 import config
+from scraper.clinics import CLINICS, cities
 from scraper.runner import run_all
 from storage import Storage
 
 
-def main():
-    print("Starting RMT availability scrape...")
+def scrape_city(city: str):
+    """Scrape one city and record its run. The scheduler calls this once per
+    city per cycle."""
+    print(f"Starting RMT availability scrape for {city}...")
     started_at = datetime.now(timezone.utc).isoformat()
-    result = run_all(city="victoria")
+    result = run_all(city=city)
     finished_at = datetime.now(timezone.utc).isoformat()
 
     storage = Storage(config.db_path())
     run_id = storage.record_run(
+        city=city,
         started_at=started_at,
         finished_at=finished_at,
         attempted=len(result.attempted),
@@ -28,6 +32,12 @@ def main():
     if result.failed:
         print(f"Failed clinics: {', '.join(result.failed)}")
     print(f"{len(result.slots)} slot(s) recorded")
+
+
+def main():
+    """Scrape every city in the roster, one after another (local CLI)."""
+    for city in cities(CLINICS):
+        scrape_city(city)
 
 
 def cli():

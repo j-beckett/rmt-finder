@@ -2,12 +2,12 @@ import os
 from contextlib import asynccontextmanager
 from dataclasses import asdict
 
-from fastapi import Depends, FastAPI
+from fastapi import Depends, FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 
 import config
-from scraper.clinics import CLINICS
+from scraper.clinics import CLINICS, cities, clinics_in_city
 from storage import Storage
 
 
@@ -71,11 +71,12 @@ def _dedupe_slots(slots: list) -> list:
 
 @app.get("/api/availability")
 def availability(city: str | None = None, storage: Storage = Depends(get_storage)):
-    good = storage.latest_good_run()
-    latest = storage.latest_run()
+    city = (city or config.DEFAULT_CITY).lower()
+    if city not in cities(CLINICS):
+        raise HTTPException(status_code=404, detail=f"Unknown city: {city}")
+    good = storage.latest_good_run(city)
+    latest = storage.latest_run(city)
     run, slots = good if good else (None, [])
-    if city is not None:
-        slots = [slot for slot in slots if slot.city.lower() == city.lower()]
     slots = _dedupe_slots(slots)
     return {
         "scraped_at": run.finished_at if run else None,
@@ -88,7 +89,7 @@ def availability(city: str | None = None, storage: Storage = Depends(get_storage
         "timezone": config.timezone_for_city(city),
         # From the clinic roster (not the run) so the frontend's about line is
         # right even before the first scrape and tracks clinics.py additions.
-        "clinics_total": len(CLINICS),
+        "clinics_total": len(clinics_in_city(CLINICS, city)),
         "slots": [_slot_dict(slot) for slot in slots],
     }
 

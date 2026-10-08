@@ -64,6 +64,17 @@ EXCLUDED_TREATMENT_KEYWORDS = [
 ]
 
 
+def cities(clinics) -> list[str]:
+    """Sorted distinct lowercase cities. The scheduler scrapes these and the
+    API validates ?city= against them, so the roster is the one source of
+    truth: adding a clinic in a new city is all it takes to add the city."""
+    return sorted({clinic.city.lower() for clinic in clinics})
+
+
+def clinics_in_city(clinics, city: str) -> list:
+    return [clinic for clinic in clinics if clinic.city.lower() == city.lower()]
+
+
 def jane_rmt(
     name: str,
     subdomain: str,

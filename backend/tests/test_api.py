@@ -1,3 +1,5 @@
+from types import SimpleNamespace
+
 import pytest
 from fastapi import FastAPI
 from fastapi.testclient import TestClient
@@ -47,6 +49,7 @@ def make_client(tmp_path, monkeypatch):
 def test_availability_envelope_carries_run_metadata(tmp_path, monkeypatch):
     client, storage = make_client(tmp_path, monkeypatch)
     run_id = storage.record_run(
+        city="victoria",
         started_at="2026-07-09T10:00:00+00:00",
         finished_at="2026-07-09T10:01:30+00:00",
         attempted=3,
@@ -68,6 +71,7 @@ def test_availability_falls_back_when_latest_attempt_failed_entirely(
 ):
     client, storage = make_client(tmp_path, monkeypatch)
     good_run_id = storage.record_run(
+        city="victoria",
         started_at="2026-07-09T10:00:00+00:00",
         finished_at="2026-07-09T10:01:30+00:00",
         attempted=3,
@@ -76,6 +80,7 @@ def test_availability_falls_back_when_latest_attempt_failed_entirely(
     )
     storage.insert_slots(good_run_id, [make_slot()])
     storage.record_run(
+        city="victoria",
         started_at="2026-07-09T10:15:00+00:00",
         finished_at="2026-07-09T10:16:30+00:00",
         attempted=3,
@@ -97,6 +102,7 @@ def test_empty_but_successful_run_returns_empty_slots_with_normal_envelope(
 ):
     client, storage = make_client(tmp_path, monkeypatch)
     storage.record_run(
+        city="victoria",
         started_at="2026-07-09T10:00:00+00:00",
         finished_at="2026-07-09T10:01:30+00:00",
         attempted=3,
@@ -126,22 +132,72 @@ def test_empty_database_returns_empty_slots_and_null_timestamps(
     assert body["latest_attempt_at"] is None
 
 
-def test_city_param_filters_slots_case_insensitively(tmp_path, monkeypatch):
-    client, storage = make_client(tmp_path, monkeypatch)
+def use_cities(monkeypatch, *cities):
+    """Make the API's clinic roster contain one clinic per given city."""
+    import api
+
+
+    monkeypatch.setattr(
+        api, "CLINICS", [SimpleNamespace(city=city) for city in cities]
+    )
+
+
+def record_city_run(storage, city, clinic_name):
     run_id = storage.record_run(
+        city=city,
         started_at="2026-07-09T10:00:00+00:00",
         finished_at="2026-07-09T10:01:30+00:00",
-        attempted=2,
-        succeeded=2,
+        attempted=1,
+        succeeded=1,
         failed_clinics=[],
     )
-    storage.insert_slots(
-        run_id, [make_slot(city="victoria"), make_slot(city="vancouver")]
+    storage.insert_slots(run_id, [make_slot(city=city, clinic_name=clinic_name)])
+
+
+def test_city_param_picks_that_citys_run_and_defaults_to_victoria(
+    tmp_path, monkeypatch
+):
+    use_cities(monkeypatch, "victoria", "vancouver")
+    client, storage = make_client(tmp_path, monkeypatch)
+    record_city_run(storage, "victoria", "Victoria Clinic")
+    record_city_run(storage, "vancouver", "Vancouver Clinic")
+
+    default = client.get("/api/availability").json()
+    van = client.get("/api/availability", params={"city": "VANCOUVER"}).json()
+
+    assert [s["clinic_name"] for s in default["slots"]] == ["Victoria Clinic"]
+    assert [s["clinic_name"] for s in van["slots"]] == ["Vancouver Clinic"]
+
+
+def test_unknown_city_is_a_404_not_an_empty_success(tmp_path, monkeypatch):
+    use_cities(monkeypatch, "victoria")
+    client, _ = make_client(tmp_path, monkeypatch)
+
+    response = client.get("/api/availability", params={"city": "atlantis"})
+
+    assert response.status_code == 404
+    assert "atlantis" in response.json()["detail"]
+
+
+def test_clinic_count_and_timezone_are_per_city(tmp_path, monkeypatch):
+    import config
+
+    use_cities(monkeypatch, "victoria", "victoria", "toronto")
+    monkeypatch.setattr(
+        config,
+        "CITY_TIMEZONES",
+        {"Victoria": "America/Vancouver", "Toronto": "America/Toronto"},
     )
+    client, _ = make_client(tmp_path, monkeypatch)
 
-    body = client.get("/api/availability", params={"city": "Victoria"}).json()
+    victoria = client.get("/api/availability").json()
+    toronto = client.get("/api/availability", params={"city": "toronto"}).json()
 
-    assert [slot["city"] for slot in body["slots"]] == ["victoria"]
+    assert (victoria["clinics_total"], victoria["timezone"]) == (
+        2,
+        "America/Vancouver",
+    )
+    assert (toronto["clinics_total"], toronto["timezone"]) == (1, "America/Toronto")
 
 
 def test_envelope_carries_the_configured_clinic_count(tmp_path, monkeypatch):
@@ -219,6 +275,7 @@ def test_cors_allows_frontend_dev_origin(tmp_path, monkeypatch):
 def test_availability_returns_latest_good_runs_slots(tmp_path, monkeypatch):
     client, storage = make_client(tmp_path, monkeypatch)
     run_id = storage.record_run(
+        city="victoria",
         started_at="2026-07-09T10:00:00+00:00",
         finished_at="2026-07-09T10:01:30+00:00",
         attempted=3,
@@ -253,6 +310,7 @@ def test_availability_collapses_one_opening_listed_under_two_treatments(
     # apart, so the envelope should carry it once.
     client, storage = make_client(tmp_path, monkeypatch)
     run_id = storage.record_run(
+        city="victoria",
         started_at="2026-07-09T10:00:00+00:00",
         finished_at="2026-07-09T10:01:30+00:00",
         attempted=1,
@@ -276,6 +334,7 @@ def test_availability_keeps_genuinely_distinct_openings(tmp_path, monkeypatch):
     # Differ by therapist, start time, or duration → not duplicates, all kept.
     client, storage = make_client(tmp_path, monkeypatch)
     run_id = storage.record_run(
+        city="victoria",
         started_at="2026-07-09T10:00:00+00:00",
         finished_at="2026-07-09T10:01:30+00:00",
         attempted=1,

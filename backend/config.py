@@ -23,7 +23,8 @@ DEFAULT_CITY = "Victoria"
 
 def timezone_for_city(city: str | None) -> str:
     """IANA timezone for a city, falling back to the default city's zone."""
-    return CITY_TIMEZONES.get(city or DEFAULT_CITY, CITY_TIMEZONES[DEFAULT_CITY])
+    zones = {name.lower(): zone for name, zone in CITY_TIMEZONES.items()}
+    return zones.get((city or DEFAULT_CITY).lower(), zones[DEFAULT_CITY.lower()])
 
 
 def lookahead_days() -> int:
