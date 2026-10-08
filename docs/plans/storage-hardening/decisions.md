@@ -48,6 +48,14 @@ and Postgres-ready without moving off SQLite. See also the project memory
    matches (editing `clinics.py` takes effect on the next scrape). An *empty*
    openings list does NOT invalidate (normal for a clinic with no openings,
    and the intermittent-empty TODO in janeapp.py is a separate problem).
+   **Shelved 2026-10-08** after two spikes (see `04-discovery-cache.md`):
+   Jane's openings API returns 403 without the cookies the clinic homepage
+   sets, so the homepage request is needed every scrape regardless. A cache
+   would only save parsing (~0.25s/run) and 4 location-page fetches
+   (~6.5s/run, from 4 of 28 clinics). Not worth a table, migration and
+   invalidation rules. Bigger savings: quiet hours
+   (`docs/plans/quiet-hours.md`); possibly reusing sessions across runs
+   (spike pending).
 8. **API:** `/api/availability?city=` defaults to Victoria, so the live
    frontend works unchanged through the deploy. Unknown city returns 404.
    `clinics_total` becomes per-city. The frontend city dropdown (defaulting to
@@ -83,7 +91,8 @@ if/when that happens, driven by measured run durations, not guesses:
    `slots(city, start_at)` and `slots(run_id)`), city-aware Storage methods,
    scheduler per-city loop, API default/404, per-city `clinics_total`.
 3. **Retention** — `RETENTION_DAYS` pruning.
-4. **Discovery cache** — migration 003 `clinic_discovery` + invalidation.
+4. ~~**Discovery cache** — migration 003 `clinic_discovery` + invalidation.~~
+   Shelved (see decision 7). Storage hardening is complete after slice 3.
 
 Follow-ups (not in this work): city dropdown (HITL design), per-city refresh
 tiers, GoatCounter analytics, `num_days=2` -> `lookahead_days()` cleanup.

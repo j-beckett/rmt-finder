@@ -1,4 +1,5 @@
 import os
+import zoneinfo
 
 # Global scraper settings
 # Any other settings that are global — like a default city, or a request timeout — live here too.
@@ -19,6 +20,13 @@ def db_path() -> str:
 # the city's zone so PST/PDT is handled correctly. Add a row per new city.
 CITY_TIMEZONES = {"Victoria": "America/Vancouver"}
 DEFAULT_CITY = "Victoria"
+
+# Time zone rules come only from the tzdata package pinned in
+# requirements.txt, never the host's system data, which zoneinfo would
+# otherwise read first. Rules change by law (BC dropped the fall-back from
+# 2026-11-01; tz release 2026b), and one versioned source means dev, CI and
+# the droplet always agree. Everything imports config, so this runs first.
+zoneinfo.reset_tzpath(to=[])
 
 
 def timezone_for_city(city: str | None) -> str:
