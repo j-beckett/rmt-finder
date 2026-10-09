@@ -105,15 +105,14 @@ export function mockEnvelope(scenario: string): AvailabilityResponse {
     case 'empty-today':
       return envelope({ slots: threeDaysOfSlots().slice(2) })
     case 'quiet':
-      // Overnight: checks paused 4h ago, last scrape just before. The window
-      // is stretched to end at a real 06:00 so the note reads as it will.
+      // Paused 4h ago; stretched to end at a real 06:00 so the note reads true.
       return envelope({
         scraped_at: utcAgo(4 * HOUR + 10 * MINUTE),
         latest_attempt_at: utcAgo(4 * HOUR + 10 * MINUTE),
         quiet_hours: { start: localFromNow(-4 * HOUR), end: nextSixAm() },
       })
     case 'quiet-morning':
-      // 10 minutes after the window ended; the first check hasn't landed yet.
+      // 10 minutes after the window; first check not landed yet.
       return envelope({
         scraped_at: utcAgo(7 * HOUR + 20 * MINUTE),
         latest_attempt_at: utcAgo(7 * HOUR + 20 * MINUTE),
@@ -123,7 +122,7 @@ export function mockEnvelope(scenario: string): AvailabilityResponse {
         },
       })
     case 'quiet-failed':
-      // Same night, but checks were already failing at 9 pm: still stale.
+      // Checks already failing before the pause: still stale.
       return envelope({
         scraped_at: utcAgo(6 * HOUR),
         latest_attempt_at: utcAgo(4 * HOUR + 10 * MINUTE),

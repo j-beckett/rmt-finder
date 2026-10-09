@@ -29,12 +29,7 @@ export function latestCheckFailed(
   )
 }
 
-/**
- * True while checks are paused for quiet hours (overnight), so the page shows
- * a calm note instead of the "out of date" banner. Only when the data is from
- * around the start of the pause (a failure before it still shows as stale),
- * and through a grace period after it ends while the first check runs.
- */
+/** True during an overnight pause (plus morning grace), so no stale banner. */
 export function isQuietPause(
   scrapedAt: string,
   quiet: QuietWindow | null,
@@ -44,20 +39,14 @@ export function isQuietPause(
   if (quiet === null) return false
   const start = Date.parse(quiet.start)
   const allowedAge = 2 * intervalMinutes * 60_000
-  // The data must be about as fresh as it was when checks paused; anything
-  // older means checks were already failing, which the stale banner reports.
+  // Older data means checks were failing before the pause: let it show stale.
   const freshAtPause = Date.parse(scrapedAt) >= start - allowedAge
-  // Grace after the window ends: the first morning check lands at the next
-  // tick and takes a few minutes, so hold until it could have completed.
+  // Grace while the first morning check runs.
   const graceEnd = Date.parse(quiet.end) + allowedAge
   return freshAtPause && nowMs >= start && nowMs <= graceEnd
 }
 
-/**
- * The meta-line note shown during a quiet pause, or null. The resume time is
- * read from the window's own offset (like slot times), so a browser with stale
- * time zone data still shows the right hour.
- */
+/** Meta-line note during a quiet pause, or null. */
 export function quietNote(
   scrapedAt: string,
   quiet: QuietWindow | null,
@@ -67,7 +56,6 @@ export function quietNote(
   if (quiet === null || !isQuietPause(scrapedAt, quiet, nowMs, intervalMinutes)) {
     return null
   }
-  // Past the end: the morning grace, while the first check of the day runs.
   if (nowMs >= Date.parse(quiet.end)) {
     return 'We pause checks overnight; the first one this morning is under way.'
   }

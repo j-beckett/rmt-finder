@@ -12,10 +12,7 @@ export interface AvailabilityResponse {
   timezone: string
   /** Clinics on the scrape roster (from clinics.py), for the about line. */
   clinics_total: number
-  /**
-   * The city's latest overnight quiet window that has started (in progress or
-   * just ended), city-local ISO times; null when quiet hours are off.
-   */
+  /** Latest overnight quiet window (city-local ISO); null when off. */
   quiet_hours: QuietWindow | null
   slots: Slot[]
 }

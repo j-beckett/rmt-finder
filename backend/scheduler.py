@@ -18,10 +18,7 @@ def _utc_now():
 def run_once(city, scrape=main.scrape_city, quiet=None, clock=_utc_now):
     """Scrape one city. A raising scrape is logged and recorded as a failed
     run for that city — it never propagates, so one bad city can't kill the
-    loop or stop the next city.
-
-    Inside the city's quiet hours (`quiet`, from config.quiet_hours()) the
-    city is skipped outright: no scrape, no run recorded, no pruning.
+    loop or stop the next city. Skipped entirely during the city's quiet hours.
     """
     if is_quiet(quiet, config.timezone_for_city(city), clock()):
         logger.info("Quiet hours: skipping %s", city)
@@ -68,7 +65,7 @@ def run_forever(
     Storage(config.db_path()).require_current()
     if cities is None:
         cities = clinic_cities(CLINICS)
-    # Read once at boot so a malformed QUIET_HOURS_* fails now, not at 11 pm.
+    # Read once so bad QUIET_HOURS_* fail at boot, not at 11 pm.
     quiet = config.quiet_hours()
     warning = long_window_warning(quiet)
     if warning:

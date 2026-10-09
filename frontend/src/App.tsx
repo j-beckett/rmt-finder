@@ -111,14 +111,13 @@ function Availability({
 
   const nowMs = Date.now()
   const today = todayInZone(data.timezone || FALLBACK_TIMEZONE)
-  // `?? null`: an API from before quiet hours existed has no such field.
+  // `?? null`: older APIs lack the field.
   const quiet = quietNote(
     data.scraped_at,
     data.quiet_hours ?? null,
     nowMs,
     SCRAPE_INTERVAL_MINUTES,
   )
-  // Overnight the data is hours old by design; the note replaces the alarm.
   const stale =
     quiet === null && isStale(data.scraped_at, nowMs, SCRAPE_INTERVAL_MINUTES)
   const checkFailed = latestCheckFailed(data.scraped_at, data.latest_attempt_at)

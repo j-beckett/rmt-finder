@@ -23,11 +23,8 @@ def db_path() -> str:
 CITY_TIMEZONES = {"Victoria": "America/Vancouver"}
 DEFAULT_CITY = "Victoria"
 
-# Time zone rules come only from the tzdata package pinned in
-# requirements.txt, never the host's system data, which zoneinfo would
-# otherwise read first. Rules change by law (BC dropped the fall-back from
-# 2026-11-01; tz release 2026b), and one versioned source means dev, CI and
-# the droplet always agree. Everything imports config, so this runs first.
+# Use only the pinned tzdata package, never host tz data, so every machine
+# agrees on rule changes (e.g. BC's permanent UTC-7 from 2026-11-01).
 zoneinfo.reset_tzpath(to=[])
 
 
@@ -91,13 +88,9 @@ class QuietHours(NamedTuple):
 
 
 def quiet_hours() -> QuietHours | None:
-    """Overnight window when the scheduler doesn't scrape, via
-    QUIET_HOURS_START and QUIET_HOURS_END (24-hour HH:MM, e.g. 23:00 and 06:00).
+    """QUIET_HOURS_START/END as city-local HH:MM, or None (off) when both unset.
 
-    Times are each city's local time; start is inclusive, end exclusive, and
-    the window may cross midnight. Both unset (or empty) = off, scrape around
-    the clock. One alone, a malformed time, or start == end raise ValueError
-    so a typo fails at startup instead of silently scraping all night.
+    Half-set, malformed, or equal times raise, so a typo fails at startup.
     """
     start = os.environ.get("QUIET_HOURS_START")
     end = os.environ.get("QUIET_HOURS_END")

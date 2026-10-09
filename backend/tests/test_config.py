@@ -111,19 +111,14 @@ def test_retention_reads_env_var_and_zero_means_keep_everything(monkeypatch):
 
 
 def test_vancouver_stays_on_utc_minus_7_after_bc_drops_the_fall_back():
-    # BC moved to permanent UTC-7; the 2026-11-01 fall-back never happens.
-    # tz data older than release 2026b would put Vancouver on UTC-8 here and
-    # shift every local-time calculation (quiet hours) by an hour.
+    # BC is permanently UTC-7 from 2026-11-01; tz data older than 2026b says -8.
     winter = datetime(2026, 12, 1, 12, 0, tzinfo=ZoneInfo("America/Vancouver"))
 
     assert winter.utcoffset() == timedelta(hours=-7)
 
 
 def test_config_makes_zoneinfo_use_only_the_pinned_tzdata_package(tmp_path):
-    # Linux hosts (the droplet, CI) have system tz data that zoneinfo would
-    # read first, and it may predate BC's change. Importing config must clear
-    # the system path so the tzdata version in requirements.txt is the only
-    # source everywhere.
+    # Host tz data (Linux) would win over the pinned package; config must clear it.
     zoneinfo.reset_tzpath(to=[str(tmp_path)])  # stand-in for /usr/share/zoneinfo
 
     importlib.reload(config)

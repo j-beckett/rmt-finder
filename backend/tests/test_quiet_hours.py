@@ -61,8 +61,7 @@ def test_uses_the_city_zone_not_utc_or_the_host():
 
 
 def test_bc_permanent_utc_minus_7_after_2026_11_01():
-    # BC no longer falls back: on 2 November 2026, 06:00 local is 13:00 UTC.
-    # Stale tz data (UTC-8) would keep it quiet until 14:00 UTC, an hour late.
+    # No fall-back: 06:00 on 2 November is 13:00 UTC (stale tz data says 14:00).
     before_six = datetime(2026, 11, 2, 12, 59, tzinfo=timezone.utc)
     six_am = datetime(2026, 11, 2, 13, 0, tzinfo=timezone.utc)
 
@@ -134,9 +133,7 @@ def test_last_window_over_bcs_old_fall_back_night_ends_at_6_am_utc_minus_7():
 
 
 def test_last_window_ends_at_the_wall_clock_time_across_a_clock_change():
-    # 8 March 2026: Vancouver sprang forward (02:00 -> 03:00), so the
-    # 23:00-06:00 window lasted 6 real hours. It must still end at 06:00 local,
-    # not "start + 7 hours" (07:00).
+    # Spring-forward night: 6 real hours, but it must still end at 06:00 local.
     now = datetime(2026, 3, 8, 10, 0, tzinfo=timezone.utc)  # 03:00 PDT
 
     start, end = last_window(OVERNIGHT, VANCOUVER, now)

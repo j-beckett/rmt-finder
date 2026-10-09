@@ -12,17 +12,16 @@ def is_quiet(window: QuietHours | None, tz_name: str, now: datetime) -> bool:
     local = now.astimezone(ZoneInfo(tz_name)).time()
     if window.start < window.end:
         return window.start <= local < window.end
-    # Crosses midnight (the usual overnight case): quiet late and early.
+    # Crosses midnight: quiet late and early.
     return local >= window.start or local < window.end
 
 
-# Any real overnight pause is shorter than this; a longer window is valid but
-# almost certainly a typo (e.g. 22:00 to 20:20 is 22h20m of no scraping).
+# Longer is valid but almost certainly a typo (e.g. 22:00-20:20).
 LONG_WINDOW = timedelta(hours=12)
 
 
 def window_length(window: QuietHours) -> timedelta:
-    """How long the window lasts each day, including across midnight."""
+    """Daily length, including across midnight."""
     day = timedelta(days=1)
     start = timedelta(hours=window.start.hour, minutes=window.start.minute)
     end = timedelta(hours=window.end.hour, minutes=window.end.minute)
@@ -52,13 +51,9 @@ class WindowTimes(NamedTuple):
 def last_window(
     window: QuietHours | None, tz_name: str, now: datetime
 ) -> WindowTimes | None:
-    """The latest quiet window that has started by `now`, as aware datetimes
-    in the city's zone: the one in progress, or else the one that ended most
-    recently. The API sends it so the frontend can tell "paused overnight"
-    from "failing".
+    """Latest window started by `now` (in progress or just ended), city-local.
 
-    Start and end are built from local dates and wall-clock times (not start
-    plus a duration), so a clock change inside the window can't skew them.
+    Built from wall-clock times (not start + duration) so DST can't skew it.
     """
     if window is None:
         return None

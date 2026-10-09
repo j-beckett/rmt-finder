@@ -18,9 +18,8 @@ logger = logging.getLogger(__name__)
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    """Refuse to start on a stale schema or malformed QUIET_HOURS_*. The
-    deploy runs migrate.py before restarting; this makes a forgotten
-    migration or a settings typo fail loudly at boot."""
+    """Refuse to start on a stale schema or bad QUIET_HOURS_*. The deploy
+    runs migrate.py before restarting; this catches a forgotten one."""
     get_storage().require_current()
     warning = long_window_warning(config.quiet_hours())
     if warning:
@@ -52,9 +51,7 @@ def get_clock():
 
 
 def _quiet_hours_dict(city: str, now: datetime) -> dict | None:
-    """The city's latest quiet window that has started (in progress or just
-    ended), so the frontend can tell an overnight pause from a failing
-    scraper. None when quiet hours are off."""
+    """Latest quiet window, so the frontend can tell a pause from a failure."""
     window = last_window(config.quiet_hours(), config.timezone_for_city(city), now)
     if window is None:
         return None
