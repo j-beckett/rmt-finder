@@ -7,6 +7,7 @@ import type { Slot } from './slots'
  * to "now" so the freshness math behaves the same whenever they're viewed.
  *
  * Scenarios: fresh · stale · partial · failed · empty · empty-today · error
+ *            quiet · quiet-morning · quiet-failed
  */
 
 const HOUR = 3_600_000
@@ -24,6 +25,15 @@ function utcAgo(msAgo: number): string {
 function localFromNow(msFromNow: number): string {
   const wall = new Date(Date.now() + msFromNow - 7 * HOUR)
   return wall.toISOString().slice(0, 19) + '-07:00'
+}
+
+/** The next 06:00 Victoria wall-clock time (-07:00), as the API sends it. */
+function nextSixAm(): string {
+  const wall = new Date(Date.now() - 7 * HOUR)
+  const six = new Date(wall)
+  six.setUTCHours(6, 0, 0, 0)
+  if (six <= wall) six.setUTCDate(six.getUTCDate() + 1)
+  return six.toISOString().slice(0, 19) + '-07:00'
 }
 
 function slot(
@@ -65,6 +75,7 @@ function envelope(overrides: Partial<AvailabilityResponse>): AvailabilityRespons
     window_days: 3,
     timezone: 'America/Vancouver',
     clinics_total: 23,
+    quiet_hours: null,
     slots: threeDaysOfSlots(),
     ...overrides,
   }
@@ -93,6 +104,31 @@ export function mockEnvelope(scenario: string): AvailabilityResponse {
       return envelope({ slots: [] })
     case 'empty-today':
       return envelope({ slots: threeDaysOfSlots().slice(2) })
+    case 'quiet':
+      // Overnight: checks paused 4h ago, last scrape just before. The window
+      // is stretched to end at a real 06:00 so the note reads as it will.
+      return envelope({
+        scraped_at: utcAgo(4 * HOUR + 10 * MINUTE),
+        latest_attempt_at: utcAgo(4 * HOUR + 10 * MINUTE),
+        quiet_hours: { start: localFromNow(-4 * HOUR), end: nextSixAm() },
+      })
+    case 'quiet-morning':
+      // 10 minutes after the window ended; the first check hasn't landed yet.
+      return envelope({
+        scraped_at: utcAgo(7 * HOUR + 20 * MINUTE),
+        latest_attempt_at: utcAgo(7 * HOUR + 20 * MINUTE),
+        quiet_hours: {
+          start: localFromNow(-7 * HOUR - 10 * MINUTE),
+          end: localFromNow(-10 * MINUTE),
+        },
+      })
+    case 'quiet-failed':
+      // Same night, but checks were already failing at 9 pm: still stale.
+      return envelope({
+        scraped_at: utcAgo(6 * HOUR),
+        latest_attempt_at: utcAgo(4 * HOUR + 10 * MINUTE),
+        quiet_hours: { start: localFromNow(-4 * HOUR), end: localFromNow(3 * HOUR) },
+      })
     case 'error':
       throw new Error('mock: simulated network failure')
     default:

@@ -4,7 +4,7 @@ import {
   SCRAPE_INTERVAL_MINUTES,
   type AvailabilityResponse,
 } from '@/lib/api'
-import { isStale, latestCheckFailed } from '@/lib/freshness'
+import { isStale, latestCheckFailed, quietNote } from '@/lib/freshness'
 import {
   formatDayLabel,
   formatPillLabel,
@@ -58,7 +58,8 @@ function App() {
             Showing bookable RMT appointments
             {state.data.clinics_total > 0 &&
               ` across ${state.data.clinics_total} clinics`}
-            , rechecked every {SCRAPE_INTERVAL_MINUTES} minutes.
+            , rechecked every {SCRAPE_INTERVAL_MINUTES} minutes
+            {state.data.quiet_hours && ', except overnight'}.
           </p>
         )}
       </header>
@@ -110,7 +111,16 @@ function Availability({
 
   const nowMs = Date.now()
   const today = todayInZone(data.timezone || FALLBACK_TIMEZONE)
-  const stale = isStale(data.scraped_at, nowMs, SCRAPE_INTERVAL_MINUTES)
+  // `?? null`: an API from before quiet hours existed has no such field.
+  const quiet = quietNote(
+    data.scraped_at,
+    data.quiet_hours ?? null,
+    nowMs,
+    SCRAPE_INTERVAL_MINUTES,
+  )
+  // Overnight the data is hours old by design; the note replaces the alarm.
+  const stale =
+    quiet === null && isStale(data.scraped_at, nowMs, SCRAPE_INTERVAL_MINUTES)
   const checkFailed = latestCheckFailed(data.scraped_at, data.latest_attempt_at)
   const all = sortSlots(data.slots)
   const shown = filterSlotsByWindow(all, activeWindow, today)
@@ -138,7 +148,12 @@ function Availability({
 
   return (
     <>
-      <MetaLine data={data} nowMs={nowMs} latestCheckOk={!checkFailed} />
+      <MetaLine
+        data={data}
+        nowMs={nowMs}
+        latestCheckOk={!checkFailed}
+        quietNote={quiet}
+      />
 
       {stale && (
         <div role="alert" className="banner mt-5">
@@ -233,10 +248,12 @@ function MetaLine({
   data,
   nowMs,
   latestCheckOk,
+  quietNote,
 }: {
   data: AvailabilityResponse
   nowMs: number
   latestCheckOk: boolean
+  quietNote: string | null
 }) {
   const failed = data.failed_clinics.length
   return (
@@ -245,6 +262,7 @@ function MetaLine({
         Last updated {timeAgo(data.scraped_at!, nowMs)}
         {failed === 0 && latestCheckOk && ' · all clinics checked'}
       </p>
+      {quietNote && <p className="mt-0.5">{quietNote}</p>}
       {failed > 0 && (
         <p className="mt-0.5">
           {failed} of {data.clinics_attempted ?? '?'} clinics couldn't be

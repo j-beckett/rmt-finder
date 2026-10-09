@@ -1,5 +1,7 @@
 import os
 import zoneinfo
+from datetime import time
+from typing import NamedTuple
 
 # Global scraper settings
 # Any other settings that are global — like a default city, or a request timeout — live here too.
@@ -68,6 +70,54 @@ def retention_days() -> int:
     latest good run survives regardless, since the API falls back to it.
     """
     return int(os.environ.get("RETENTION_DAYS", "7"))
+
+
+def _parse_hh_mm(name: str, value: str) -> time:
+    """A 24-hour "HH:MM" setting, or a ValueError naming the setting."""
+    try:
+        hours, _, minutes = value.partition(":")
+        if not (len(hours) == len(minutes) == 2 and (hours + minutes).isdigit()):
+            raise ValueError
+        return time(int(hours), int(minutes))
+    except ValueError:
+        raise ValueError(
+            f"{name} must be a 24-hour time as HH:MM (e.g. 23:00), got {value!r}."
+        ) from None
+
+
+class QuietHours(NamedTuple):
+    start: time
+    end: time
+
+
+def quiet_hours() -> QuietHours | None:
+    """Overnight window when the scheduler doesn't scrape, via
+    QUIET_HOURS_START and QUIET_HOURS_END (24-hour HH:MM, e.g. 23:00 and 06:00).
+
+    Times are each city's local time; start is inclusive, end exclusive, and
+    the window may cross midnight. Both unset (or empty) = off, scrape around
+    the clock. One alone, a malformed time, or start == end raise ValueError
+    so a typo fails at startup instead of silently scraping all night.
+    """
+    start = os.environ.get("QUIET_HOURS_START")
+    end = os.environ.get("QUIET_HOURS_END")
+    if not start and not end:
+        return None
+    if not start or not end:
+        missing = "QUIET_HOURS_END" if start else "QUIET_HOURS_START"
+        raise ValueError(
+            f"Quiet hours need both times; {missing} is not set."
+            " Set both QUIET_HOURS_START and QUIET_HOURS_END, or neither."
+        )
+    window = QuietHours(
+        _parse_hh_mm("QUIET_HOURS_START", start), _parse_hh_mm("QUIET_HOURS_END", end)
+    )
+    if window.start == window.end:
+        raise ValueError(
+            f"QUIET_HOURS_START and QUIET_HOURS_END are both {start}, which is"
+            " ambiguous. To turn quiet hours off, leave both unset."
+        )
+    return window
 
 
 def frontend_dist_path() -> str:

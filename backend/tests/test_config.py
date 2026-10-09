@@ -1,8 +1,10 @@
 import importlib
 import os
 import zoneinfo
-from datetime import datetime, timedelta
+from datetime import datetime, time, timedelta
 from zoneinfo import ZoneInfo
+
+import pytest
 
 import config
 
@@ -127,3 +129,61 @@ def test_config_makes_zoneinfo_use_only_the_pinned_tzdata_package(tmp_path):
     importlib.reload(config)
 
     assert zoneinfo.TZPATH == ()
+
+
+def test_quiet_hours_are_off_when_neither_time_is_set(monkeypatch):
+    monkeypatch.delenv("QUIET_HOURS_START", raising=False)
+    monkeypatch.delenv("QUIET_HOURS_END", raising=False)
+
+    assert config.quiet_hours() is None
+
+
+def test_quiet_hours_reads_both_times(monkeypatch):
+    monkeypatch.setenv("QUIET_HOURS_START", "23:00")
+    monkeypatch.setenv("QUIET_HOURS_END", "06:00")
+
+    assert config.quiet_hours() == (time(23, 0), time(6, 0))
+
+
+@pytest.mark.parametrize(
+    "start, end, missing",
+    [("23:00", None, "QUIET_HOURS_END"), (None, "06:00", "QUIET_HOURS_START")],
+)
+def test_quiet_hours_with_only_one_time_set_is_an_error(
+    monkeypatch, start, end, missing
+):
+    # A half-configured window must fail loudly, not silently scrape all night.
+    for name, value in (("QUIET_HOURS_START", start), ("QUIET_HOURS_END", end)):
+        if value is None:
+            monkeypatch.delenv(name, raising=False)
+        else:
+            monkeypatch.setenv(name, value)
+
+    with pytest.raises(ValueError, match=missing):
+        config.quiet_hours()
+
+
+@pytest.mark.parametrize("bad", ["11pm", "25:00", "6", "06:00:00:00", "+1:00", " 1:00"])
+def test_quiet_hours_malformed_time_is_a_clear_error(monkeypatch, bad):
+    monkeypatch.setenv("QUIET_HOURS_START", bad)
+    monkeypatch.setenv("QUIET_HOURS_END", "06:00")
+
+    with pytest.raises(ValueError, match=r"QUIET_HOURS_START .*HH:MM"):
+        config.quiet_hours()
+
+
+def test_quiet_hours_with_the_same_start_and_end_is_an_error(monkeypatch):
+    # Ambiguous (all day, or never?) and "off" is already "leave both unset".
+    monkeypatch.setenv("QUIET_HOURS_START", "23:00")
+    monkeypatch.setenv("QUIET_HOURS_END", "23:00")
+
+    with pytest.raises(ValueError, match="leave both unset"):
+        config.quiet_hours()
+
+
+def test_quiet_hours_are_off_when_both_times_are_empty(monkeypatch):
+    # e.g. QUIET_HOURS_START= in a systemd unit, to switch it off in place.
+    monkeypatch.setenv("QUIET_HOURS_START", "")
+    monkeypatch.setenv("QUIET_HOURS_END", "")
+
+    assert config.quiet_hours() is None

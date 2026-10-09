@@ -1,3 +1,5 @@
+import logging
+from datetime import datetime, timezone
 from types import SimpleNamespace
 
 import pytest
@@ -373,3 +375,59 @@ def test_api_starts_on_a_migrated_schema(tmp_path, monkeypatch):
 
     with TestClient(app) as client:
         assert client.get("/api/availability").status_code == 200
+
+
+def test_envelope_reports_the_current_quiet_window(tmp_path, monkeypatch):
+    monkeypatch.setenv("QUIET_HOURS_START", "23:00")
+    monkeypatch.setenv("QUIET_HOURS_END", "06:00")
+    client, _ = make_client(tmp_path, monkeypatch)
+    from api import app, get_clock
+
+    three_am = datetime(2026, 10, 9, 10, 0, tzinfo=timezone.utc)
+    app.dependency_overrides[get_clock] = lambda: (lambda: three_am)
+
+    body = client.get("/api/availability").json()
+
+    assert body["quiet_hours"] == {
+        "start": "2026-10-08T23:00:00-07:00",
+        "end": "2026-10-09T06:00:00-07:00",
+    }
+
+
+def test_envelope_quiet_hours_is_null_when_off(tmp_path, monkeypatch):
+    monkeypatch.delenv("QUIET_HOURS_START", raising=False)
+    monkeypatch.delenv("QUIET_HOURS_END", raising=False)
+    client, _ = make_client(tmp_path, monkeypatch)
+
+    body = client.get("/api/availability").json()
+
+    assert body["quiet_hours"] is None
+
+
+def test_api_refuses_to_start_on_bad_quiet_hours(tmp_path, monkeypatch):
+    db_path = tmp_path / "test.db"
+    migrated_storage(str(db_path))
+    monkeypatch.setenv("RMT_FINDER_DB_PATH", str(db_path))
+    monkeypatch.setenv("QUIET_HOURS_START", "23:00")
+    monkeypatch.delenv("QUIET_HOURS_END", raising=False)
+    from api import app
+
+    with pytest.raises(ValueError, match="QUIET_HOURS_END"):
+        with TestClient(app):
+            pass
+
+
+def test_api_warns_about_a_suspiciously_long_quiet_window(
+    tmp_path, monkeypatch, caplog
+):
+    db_path = tmp_path / "test.db"
+    migrated_storage(str(db_path))
+    monkeypatch.setenv("RMT_FINDER_DB_PATH", str(db_path))
+    monkeypatch.setenv("QUIET_HOURS_START", "22:00")
+    monkeypatch.setenv("QUIET_HOURS_END", "20:20")
+    from api import app
+
+    with caplog.at_level(logging.WARNING), TestClient(app):
+        pass
+
+    assert "22h20m" in caplog.text

@@ -4,16 +4,28 @@ from datetime import datetime, timezone
 
 import config
 import main
+from quiet_hours import is_quiet, long_window_warning
 from scraper.clinics import CLINICS, cities as clinic_cities
 from storage import Storage
 
 logger = logging.getLogger(__name__)
 
 
-def run_once(city, scrape=main.scrape_city):
+def _utc_now():
+    return datetime.now(timezone.utc)
+
+
+def run_once(city, scrape=main.scrape_city, quiet=None, clock=_utc_now):
     """Scrape one city. A raising scrape is logged and recorded as a failed
     run for that city — it never propagates, so one bad city can't kill the
-    loop or stop the next city."""
+    loop or stop the next city.
+
+    Inside the city's quiet hours (`quiet`, from config.quiet_hours()) the
+    city is skipped outright: no scrape, no run recorded, no pruning.
+    """
+    if is_quiet(quiet, config.timezone_for_city(city), clock()):
+        logger.info("Quiet hours: skipping %s", city)
+        return
     started_at = datetime.now(timezone.utc).isoformat()
     try:
         scrape(city)
@@ -32,7 +44,7 @@ def run_once(city, scrape=main.scrape_city):
         )
 
 
-def run_cycle(scrape, cities):
+def run_cycle(scrape, cities, quiet=None, clock=_utc_now):
     """One pass over the cities, strictly one after another.
 
     Sequential on purpose: it keeps upstream concurrency at 1 (the Jane
@@ -44,19 +56,26 @@ def run_cycle(scrape, cities):
     docs/plans/storage-hardening/decisions.md.
     """
     for city in cities:
-        run_once(city, scrape)
+        run_once(city, scrape, quiet=quiet, clock=clock)
 
 
-def run_forever(scrape=main.scrape_city, sleep=time.sleep, cities=None):
+def run_forever(
+    scrape=main.scrape_city, sleep=time.sleep, cities=None, clock=_utc_now
+):
     """Scrape every city immediately on startup, then every
     SCRAPE_INTERVAL_MINUTES. `cities` defaults to the clinic roster's cities."""
     # Fail loudly at boot if a deploy forgot migrate.py, not on the first write.
     Storage(config.db_path()).require_current()
     if cities is None:
         cities = clinic_cities(CLINICS)
+    # Read once at boot so a malformed QUIET_HOURS_* fails now, not at 11 pm.
+    quiet = config.quiet_hours()
+    warning = long_window_warning(quiet)
+    if warning:
+        logger.warning(warning)
     interval_seconds = config.scrape_interval_minutes() * 60
     while True:
-        run_cycle(scrape, cities)
+        run_cycle(scrape, cities, quiet=quiet, clock=clock)
         sleep(interval_seconds)
 
 

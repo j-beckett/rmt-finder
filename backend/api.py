@@ -1,22 +1,30 @@
+import logging
 import os
 from contextlib import asynccontextmanager
 from dataclasses import asdict
+from datetime import datetime, timezone
 
 from fastapi import Depends, FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 
 import config
+from quiet_hours import last_window, long_window_warning
 from scraper.clinics import CLINICS, cities, clinics_in_city
 from storage import Storage
 
+logger = logging.getLogger(__name__)
 
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    """Refuse to start on a stale schema. The deploy runs migrate.py before
-    restarting; this makes a forgotten migration fail loudly at boot."""
+    """Refuse to start on a stale schema or malformed QUIET_HOURS_*. The
+    deploy runs migrate.py before restarting; this makes a forgotten
+    migration or a settings typo fail loudly at boot."""
     get_storage().require_current()
+    warning = long_window_warning(config.quiet_hours())
+    if warning:
+        logger.warning(warning)
     yield
 
 
@@ -32,6 +40,25 @@ def get_storage() -> Storage:
     """FastAPI dependency. Reads the path per call so config (and tests) can
     point at a different database; construction is cheap."""
     return Storage(config.db_path())
+
+
+def _utc_now() -> datetime:
+    return datetime.now(timezone.utc)
+
+
+def get_clock():
+    """FastAPI dependency: the current time, overridable in tests."""
+    return _utc_now
+
+
+def _quiet_hours_dict(city: str, now: datetime) -> dict | None:
+    """The city's latest quiet window that has started (in progress or just
+    ended), so the frontend can tell an overnight pause from a failing
+    scraper. None when quiet hours are off."""
+    window = last_window(config.quiet_hours(), config.timezone_for_city(city), now)
+    if window is None:
+        return None
+    return {"start": window.start.isoformat(), "end": window.end.isoformat()}
 
 
 def _slot_dict(slot) -> dict:
@@ -70,7 +97,11 @@ def _dedupe_slots(slots: list) -> list:
 
 
 @app.get("/api/availability")
-def availability(city: str | None = None, storage: Storage = Depends(get_storage)):
+def availability(
+    city: str | None = None,
+    storage: Storage = Depends(get_storage),
+    clock=Depends(get_clock),
+):
     city = (city or config.DEFAULT_CITY).lower()
     if city not in cities(CLINICS):
         raise HTTPException(status_code=404, detail=f"Unknown city: {city}")
@@ -90,6 +121,7 @@ def availability(city: str | None = None, storage: Storage = Depends(get_storage
         # From the clinic roster (not the run) so the frontend's about line is
         # right even before the first scrape and tracks clinics.py additions.
         "clinics_total": len(clinics_in_city(CLINICS, city)),
+        "quiet_hours": _quiet_hours_dict(city, clock()),
         "slots": [_slot_dict(slot) for slot in slots],
     }
 

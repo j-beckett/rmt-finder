@@ -134,6 +134,47 @@ frontend's freshness rules use it; they stay pure functions with tests.
 11. Frontend: the meta line shows "We pause checks overnight and start
     again at <end time>." while quiet; no banner.
 
+## As built (notes and deviations)
+
+- `config.quiet_hours()` returns `QuietHours(start, end)` or None; strict
+  `HH:MM` parsing (rejects `6`, `25:00`, `+1:00`, ` 1:00`).
+- `backend/quiet_hours.py`: `is_quiet`, `last_window` (the window the API
+  sends), `long_window_warning` (> 12h, logged at startup by both services).
+- Scheduler: `run_once`/`run_cycle`/`run_forever` take `quiet` and an
+  injectable `clock`; settings read once at boot.
+- API: `quiet_hours: {start, end}` (city-local ISO) or null; a `get_clock`
+  dependency for tests; refuses to start on bad settings.
+- Frontend: `isQuietPause` and `quietNote` in `lib/freshness.ts`; the note
+  replaces the stale banner. The resume time uses the site's existing
+  `formatSlotTime`, so it reads "6:00 AM" (not "6 am"), matching slot times,
+  and comes from the window's own offset, immune to stale browser tz data.
+- The note also shows during the 30-minute morning grace, while the first
+  check runs ("start again at 6:00 AM" at 06:10 is still true enough).
+- Dev mocks: `?mock=quiet` and `?mock=quiet-failed`. Their times are relative
+  to now, so the resume time shown is "now + 3h", not 6:00 AM.
+- Not changed: the intro copy "rechecked every 15 minutes" (true by day).
+
 ## Manual checklist
 
-To be written once the plan is final.
+1. Tests: `venv\Scripts\python.exe -m pytest` (149) and, in `frontend\`,
+   `npx vitest run` (43); `npm run build` passes.
+2. Look at the states in the dev server (`npm run dev` in `frontend\`):
+   `?mock=quiet` shows the note and no banner; `?mock=quiet-failed` shows the
+   "out of date" banner; `?mock=fresh` and `?mock=stale` are unchanged.
+3. Scheduler, locally, with a window around the current time (e.g. if it is
+   14:20, use 14:00 to 15:00):
+   `QUIET_HOURS_START=14:00 QUIET_HOURS_END=15:00 RMT_FINDER_DB_PATH=data/qh-test.db venv/Scripts/python.exe backend/migrate.py`
+   then the same env with `venv/Scripts/python.exe backend/scheduler.py`:
+   the log says "Quiet hours: skipping victoria" and nothing is scraped.
+   Ctrl+C. Delete `data/qh-test.db*`.
+4. Bad settings fail at startup: `QUIET_HOURS_START=23:00` alone (and
+   `QUIET_HOURS_START=11pm QUIET_HOURS_END=06:00`) make `scheduler.py` exit
+   with a message naming the setting. `22:00`/`20:20` starts with a warning
+   mentioning 22h20m.
+5. After deploying: set both variables for `rmt-scheduler` and `rmt-api` on
+   the droplet (where the services get their environment: see
+   `systemctl cat rmt-scheduler rmt-api`), restart both, and check
+   `curl -s localhost:8000/api/availability | grep -o '"quiet_hours":[^}]*}'`.
+   Until they are set, nothing changes (quiet hours off).
+6. First night: the scheduler log shows skips from 23:00; the site shows the
+   note, no banner; scraping resumes at the first tick after 06:00.
