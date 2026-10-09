@@ -1,0 +1,8 @@
+# Source of truth: deploy/Caddyfile in the rmt-finder repo. Edit there, then copy here.
+rmtfinder.studiobeckett.ca {
+    reverse_proxy 127.0.0.1:8000
+}
+
+stats.studiobeckett.ca {
+    reverse_proxy 127.0.0.1:8081
+}

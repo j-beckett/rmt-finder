@@ -1,0 +1,17 @@
+# Installed as /etc/systemd/system/goatcounter.service (see the runbook).
+[Unit]
+Description=GoatCounter analytics (stats.studiobeckett.ca)
+After=network-online.target
+
+[Service]
+User=goatcounter
+WorkingDirectory=/var/lib/goatcounter
+# Symlink to the pinned binary; Caddy terminates TLS, so serve plain HTTP.
+ExecStart=/opt/goatcounter/goatcounter serve -listen 127.0.0.1:8081 -tls http -db sqlite+/var/lib/goatcounter/db.sqlite3
+# 512MB droplet: if GoatCounter misbehaves, it gets killed, not the site.
+MemoryMax=128M
+Restart=on-failure
+RestartSec=5
+
+[Install]
+WantedBy=multi-user.target
