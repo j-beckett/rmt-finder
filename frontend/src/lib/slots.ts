@@ -1,6 +1,8 @@
 /** One bookable slot as returned by GET /api/availability. */
 export interface Slot {
   clinic_name: string
+  /** Stable analytics key; null only on slots scraped before slugs existed. */
+  clinic_slug: string | null
   city: string
   platform: string
   rmt_name: string

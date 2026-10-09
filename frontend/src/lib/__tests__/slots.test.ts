@@ -10,6 +10,7 @@ import {
 function makeSlot(overrides: Partial<Slot>): Slot {
   return {
     clinic_name: 'Fern & Stone Massage',
+    clinic_slug: 'fern-and-stone',
     city: 'Victoria',
     platform: 'jane',
     rmt_name: 'Alex Chen',

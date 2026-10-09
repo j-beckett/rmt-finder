@@ -6,6 +6,7 @@ from scraper.runner import run_all
 def make_slot(clinic_name):
     return AvailabilityResult(
         clinic_name=clinic_name,
+        clinic_slug=None,
         city="victoria",
         platform="janeapp",
         rmt_name="Jane Doe",
@@ -26,8 +27,8 @@ class StubAdapter:
 
 def test_run_all_reports_per_clinic_outcomes_alongside_slots():
     clinics = [
-        jane_rmt("Good Clinic", "goodclinic"),
-        jane_rmt("Broken Clinic", "brokenclinic"),
+        jane_rmt("Good Clinic", "goodclinic", slug="goodclinic"),
+        jane_rmt("Broken Clinic", "brokenclinic", slug="brokenclinic"),
     ]
 
     result = run_all(
@@ -45,9 +46,9 @@ def test_run_all_reports_per_clinic_outcomes_alongside_slots():
 def test_run_all_pauses_between_clinics_but_not_before_the_first(monkeypatch):
     monkeypatch.setenv("INTER_CLINIC_SLEEP_SECONDS", "2.5")
     clinics = [
-        jane_rmt("Clinic A", "clinica"),
-        jane_rmt("Clinic B", "clinicb"),
-        jane_rmt("Clinic C", "clinicc"),
+        jane_rmt("Clinic A", "clinica", slug="clinica"),
+        jane_rmt("Clinic B", "clinicb", slug="clinicb"),
+        jane_rmt("Clinic C", "clinicc", slug="clinicc"),
     ]
     sleeps = []
 

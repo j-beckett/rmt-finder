@@ -10,7 +10,7 @@ def kept(name):
     """Whether a plain clinic (shared excludes only) keeps this treatment."""
     treatment = {"id": 9, "discipline_id": 1, "treatment_duration": 3600, "name": name}
     service_map = JaneAppAdapter()._map_services(
-        jane_rmt("Any", "any"), DISCIPLINES, [treatment]
+        jane_rmt("Any", "any", slug="any"), DISCIPLINES, [treatment]
     )
     return bool(service_map)
 
@@ -53,7 +53,8 @@ def kept_names(*treatments):
         {"id": i, "discipline_id": 1, "treatment_duration": minutes * 60, "name": name}
         for i, (name, minutes) in enumerate(treatments)
     ]
-    service_map = JaneAppAdapter()._map_services(jane_rmt("Any", "any"), DISCIPLINES, raw)
+    clinic = jane_rmt("Any", "any", slug="any")
+    service_map = JaneAppAdapter()._map_services(clinic, DISCIPLINES, raw)
     return [t["name"] for ts in service_map.values() for t in ts]
 
 

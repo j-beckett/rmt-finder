@@ -13,6 +13,7 @@ LATEST = len(MIGRATIONS)
 def make_slot(**overrides):
     slot = AvailabilityResult(
         clinic_name="Test Clinic",
+        clinic_slug="test-clinic",
         city="victoria",
         platform="janeapp",
         rmt_name="Jane Doe",
@@ -400,7 +401,7 @@ def test_migration_2_adds_city_and_backfills_existing_runs_as_victoria(
         )
     assert user_version(db_path) == 1
 
-    assert Storage(str(db_path)).migrate() == 2
+    assert Storage(str(db_path)).migrate() == LATEST
 
     with sqlite3.connect(db_path) as conn:
         assert conn.execute("SELECT city FROM scrape_runs").fetchall() == [
@@ -667,3 +668,40 @@ def test_prune_slots_only_touches_the_given_city(tmp_path):
     assert deleted == 2
     assert slot_counts(db_path) == {van_old: 2, van_latest: 2, vic_latest: 2}
     assert vic_old not in slot_counts(db_path)
+
+
+def test_migration_3_adds_clinic_slug_and_old_rows_read_back_without_one(
+    tmp_path, monkeypatch
+):
+    import storage as storage_module
+
+    db_path = tmp_path / "test.db"
+    # Production as of slice 01: version 2, slots stored before slugs existed.
+    with monkeypatch.context() as m:
+        m.setattr(storage_module, "MIGRATIONS", storage_module.MIGRATIONS[:2])
+        old = Storage(str(db_path))
+        old.migrate()
+        run_id = old.record_run("victoria", "a", "b", 1, 1, [])
+    with sqlite3.connect(db_path) as conn:
+        conn.execute(
+            "INSERT INTO slots (run_id, clinic_name, city, platform, rmt_name,"
+            " service_type, treatment_name, duration_minutes, start_at,"
+            " booking_url) VALUES (?, 'Old Clinic', 'victoria', 'janeapp',"
+            " 'Jane Doe', 'massage_therapy', '60min Massage', 60, 's', 'u')",
+            (run_id,),
+        )
+
+    assert Storage(str(db_path)).migrate() == LATEST
+
+    _, slots = Storage(str(db_path)).latest_good_run("victoria")
+    assert [(s.clinic_name, s.clinic_slug) for s in slots] == [("Old Clinic", None)]
+
+
+def test_clinic_slug_round_trips_through_storage(tmp_path):
+    storage = migrated_storage(str(tmp_path / "test.db"))
+    run_id = storage.record_run("victoria", "a", "b", 1, 1, [])
+    storage.insert_slots(run_id, [make_slot(clinic_slug="equilibrium-fisgard")])
+
+    _, slots = storage.latest_good_run("victoria")
+
+    assert [s.clinic_slug for s in slots] == ["equilibrium-fisgard"]

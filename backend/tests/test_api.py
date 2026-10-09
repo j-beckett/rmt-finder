@@ -24,6 +24,7 @@ def clear_dependency_overrides():
 def make_slot(**overrides):
     slot = AvailabilityResult(
         clinic_name="Test Clinic",
+        clinic_slug="test-clinic",
         city="victoria",
         platform="janeapp",
         rmt_name="Jane Doe",
@@ -292,6 +293,7 @@ def test_availability_returns_latest_good_runs_slots(tmp_path, monkeypatch):
     assert response.json()["slots"] == [
         {
             "clinic_name": "Test Clinic",
+            "clinic_slug": "test-clinic",
             "city": "victoria",
             "platform": "janeapp",
             "rmt_name": "Jane Doe",

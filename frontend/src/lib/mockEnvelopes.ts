@@ -39,11 +39,13 @@ function nextSixAm(): string {
 function slot(
   msFromNow: number,
   clinic: string,
+  clinicSlug: string,
   rmt: string,
   minutes: number,
 ): Slot {
   return {
     clinic_name: clinic,
+    clinic_slug: clinicSlug,
     city: 'Victoria',
     platform: 'jane',
     rmt_name: rmt,
@@ -57,12 +59,36 @@ function slot(
 
 function threeDaysOfSlots(): Slot[] {
   return [
-    slot(2 * HOUR, 'Equilibrium Massage Therapy', 'Alex Chen', 60),
-    slot(4.5 * HOUR, 'Tall Tree Health', 'Priya Sandhu', 45),
-    slot(26 * HOUR, 'Victoria Centre Acupuncture & Massage', 'Mei Wong', 60),
-    slot(29 * HOUR, 'Moss Healthcare', 'Jordan Lee', 45),
-    slot(31 * HOUR, 'Equilibrium Massage Therapy', 'Sam Rivera', 90),
-    slot(50 * HOUR, 'Tall Tree Health', 'Priya Sandhu', 60),
+    slot(
+      2 * HOUR,
+      'Equilibrium Massage Therapy',
+      'equilibrium-fisgard',
+      'Alex Chen',
+      60,
+    ),
+    slot(
+      4.5 * HOUR,
+      'Tall Tree Health',
+      'tall-tree-james-bay',
+      'Priya Sandhu',
+      45,
+    ),
+    slot(
+      26 * HOUR,
+      'Victoria Centre Acupuncture & Massage',
+      'victoria-centre-acupuncture',
+      'Mei Wong',
+      60,
+    ),
+    slot(29 * HOUR, 'Moss Healthcare', 'moss-healthcare', 'Jordan Lee', 45),
+    slot(
+      31 * HOUR,
+      'Equilibrium Massage Therapy',
+      'equilibrium-fisgard',
+      'Sam Rivera',
+      90,
+    ),
+    slot(50 * HOUR, 'Tall Tree Health', 'tall-tree-james-bay', 'Priya Sandhu', 60),
   ]
 }
 

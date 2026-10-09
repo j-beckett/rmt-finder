@@ -4,6 +4,7 @@ from scraper.models import AvailabilityResult, ServiceType
 def test_availability_result_holds_service_type_value():
     result = AvailabilityResult(
         clinic_name="Test Clinic",
+        clinic_slug="test-clinic",
         city="victoria",
         platform="jane",
         rmt_name="Jane Doe",

@@ -75,6 +75,10 @@ MIGRATIONS: list[list[str]] = [
         " ON slots (city, start_at)",
         "CREATE INDEX IF NOT EXISTS idx_slots_run_id ON slots (run_id)",
     ],
+    [
+        # Nullable: slots scraped before clinics had slugs keep NULL.
+        "ALTER TABLE slots ADD COLUMN clinic_slug TEXT",
+    ],
 ]
 
 
@@ -165,14 +169,15 @@ class Storage:
     def insert_slots(self, run_id: int, slots: list[AvailabilityResult]) -> None:
         with self._connect() as conn:
             conn.executemany(
-                "INSERT INTO slots (run_id, clinic_name, city, platform,"
-                " rmt_name, service_type, treatment_name, duration_minutes,"
-                " start_at, booking_url)"
-                " VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+                "INSERT INTO slots (run_id, clinic_name, clinic_slug, city,"
+                " platform, rmt_name, service_type, treatment_name,"
+                " duration_minutes, start_at, booking_url)"
+                " VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
                 [
                     (
                         run_id,
                         slot.clinic_name,
+                        slot.clinic_slug,
                         slot.city,
                         slot.platform,
                         slot.rmt_name,
@@ -274,22 +279,24 @@ class Storage:
                 return None
             run = self._run_record(run_row)
             slot_rows = conn.execute(
-                "SELECT clinic_name, city, platform, rmt_name, service_type,"
-                " treatment_name, duration_minutes, start_at, booking_url"
+                "SELECT clinic_name, clinic_slug, city, platform, rmt_name,"
+                " service_type, treatment_name, duration_minutes, start_at,"
+                " booking_url"
                 " FROM slots WHERE run_id = ? ORDER BY id",
                 (run.id,),
             ).fetchall()
         slots = [
             AvailabilityResult(
                 clinic_name=row[0],
-                city=row[1],
-                platform=row[2],
-                rmt_name=row[3],
-                service_type=ServiceType(row[4]),
-                treatment_name=row[5],
-                duration_minutes=row[6],
-                start_at=row[7],
-                booking_url=row[8],
+                clinic_slug=row[1],
+                city=row[2],
+                platform=row[3],
+                rmt_name=row[4],
+                service_type=ServiceType(row[5]),
+                treatment_name=row[6],
+                duration_minutes=row[7],
+                start_at=row[8],
+                booking_url=row[9],
             )
             for row in slot_rows
         ]

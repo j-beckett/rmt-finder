@@ -247,6 +247,7 @@ class JaneAppAdapter(BaseAdapter):
             results.append(
                 AvailabilityResult(
                     clinic_name=clinic.name,
+                    clinic_slug=clinic.slug,
                     city=clinic.city,
                     platform="janeapp",
                     rmt_name=discovered["staff_lookup"].get(staff_id, "Unknown"),

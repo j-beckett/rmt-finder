@@ -47,7 +47,8 @@ BASE = "https://clinic.janeapp.com"
 def test_location_id_is_read_from_the_homepage():
     session = FakeSession({BASE: booking_page(2)})
 
-    discovered = JaneAppAdapter().discover(jane_rmt("Kari Lund", "clinic"), session)
+    clinic = jane_rmt("Kari Lund", "clinic", slug="clinic")
+    discovered = JaneAppAdapter().discover(clinic, session)
 
     assert discovered["location_id"] == 2
     assert discovered["booking_url"] == BASE
@@ -61,7 +62,8 @@ def test_a_single_location_link_is_followed_when_the_homepage_has_no_id():
         }
     )
 
-    discovered = JaneAppAdapter().discover(jane_rmt("Kari Lund", "clinic"), session)
+    clinic = jane_rmt("Kari Lund", "clinic", slug="clinic")
+    discovered = JaneAppAdapter().discover(clinic, session)
 
     assert discovered["location_id"] == 2
     assert discovered["booking_url"] == f"{BASE}/locations/van-isle-wellness/book"
@@ -75,7 +77,7 @@ def test_a_configured_location_slug_picks_that_location():
             f"{BASE}/locations/westshore/book": booking_page(4),
         }
     )
-    clinic = jane_rmt("Natural Balance", "clinic", location="westshore")
+    clinic = jane_rmt("Natural Balance", "clinic", slug="clinic", location="westshore")
 
     discovered = JaneAppAdapter().discover(clinic, session)
 
@@ -93,12 +95,13 @@ def test_several_locations_without_a_configured_slug_fail_loudly():
     )
 
     with pytest.raises(ValueError, match="saanichton-health-centre, westshore"):
-        JaneAppAdapter().discover(jane_rmt("Natural Balance", "clinic"), session)
+        clinic = jane_rmt("Natural Balance", "clinic", slug="clinic")
+        JaneAppAdapter().discover(clinic, session)
 
 
 def test_a_configured_slug_that_does_not_exist_fails_loudly():
     session = FakeSession({BASE: home_with_links("westshore")})
-    clinic = jane_rmt("Natural Balance", "clinic", location="langford")
+    clinic = jane_rmt("Natural Balance", "clinic", slug="clinic", location="langford")
 
     with pytest.raises(ValueError, match="langford"):
         JaneAppAdapter().discover(clinic, session)
@@ -112,8 +115,23 @@ def test_openings_are_requested_for_the_discovered_location(monkeypatch):
     )
     monkeypatch.setattr("scraper.adapters.janeapp.make_session", lambda: session)
 
-    slots = JaneAppAdapter().fetch_availability(jane_rmt("Kari Lund", "clinic"))
+    clinic = jane_rmt("Kari Lund", "clinic", slug="clinic")
+    slots = JaneAppAdapter().fetch_availability(clinic)
 
     openings_calls = [u for u in session.requested if "/api/v2/openings/" in u]
     assert openings_calls and all("location_id=2&" in u for u in openings_calls)
     assert [(s.rmt_name, s.booking_url) for s in slots] == [("Kari Lund", BASE)]
+
+
+def test_slots_carry_the_clinic_slug(monkeypatch):
+    monkeypatch.setattr(JaneAppAdapter, "_is_within_lookahead", lambda self, s: True)
+    session = FakeSession(
+        {BASE: booking_page(2)},
+        openings=[{"start_at": "2026-10-09T10:00:00-07:00", "staff_member_id": 7}],
+    )
+    monkeypatch.setattr("scraper.adapters.janeapp.make_session", lambda: session)
+    clinic = jane_rmt("Kari Lund RMT", "clinic", slug="kari-lund-rmt")
+
+    slots = JaneAppAdapter().fetch_availability(clinic)
+
+    assert [s.clinic_slug for s in slots] == ["kari-lund-rmt"]

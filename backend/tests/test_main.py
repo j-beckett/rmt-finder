@@ -10,6 +10,7 @@ from tests.helpers import migrated_storage
 def make_slot():
     return AvailabilityResult(
         clinic_name="Good Clinic",
+        clinic_slug="good-clinic",
         city="victoria",
         platform="janeapp",
         rmt_name="Jane Doe",

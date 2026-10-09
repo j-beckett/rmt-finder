@@ -11,6 +11,8 @@ class ServiceType(Enum):
 @dataclass
 class AvailabilityResult:
     clinic_name: str
+    # None only for rows stored before slugs existed.
+    clinic_slug: str | None
     city: str
     platform: str
     rmt_name: str
