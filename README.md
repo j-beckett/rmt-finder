@@ -1,7 +1,7 @@
 # RMT Finder
 
-Find open RMT (registered massage therapist) appointments across 24 Victoria, BC
-clinics in one place — scraped every 15 minutes, shown with honest freshness
+Find open RMT (registered massage therapist) appointments across 40 clinics in
+Victoria and Langford, BC in one place — scraped every 15 minutes, shown with honest freshness
 labels.
 
 **Live:** https://rmtfinder.studiobeckett.ca
@@ -27,7 +27,7 @@ _who has an opening in the next three days?_
 
 ```mermaid
 flowchart LR
-    J[Jane App booking pages<br/>24 clinics] -->|"scrape every 15 min"| S[Scraper + scheduler]
+    J[Jane App booking pages<br/>40 clinics, 2 cities] -->|"scrape every 15 min"| S[Scraper + scheduler]
     S -->|"runs + slots"| DB[(SQLite)]
     DB --> API[FastAPI]
     API -->|"/api/availability"| FE[React frontend]
@@ -68,26 +68,92 @@ a contained change.
 
 ## Run it locally
 
-Backend (Python 3.11+):
+Needs Python 3.10+ and Node 20+. The commands are for **Git Bash on Windows**.
+On macOS/Linux, replace `venv/Scripts/` with `venv/bin/`. In bash, use
+forward slashes: `venv\Scripts\...` breaks because bash treats `\` as an
+escape character.
+
+### First time only
+
+Skip this if `venv/` already exists at the repo root. Start in the repo root
+(not `backend/`), or the venv lands in the wrong folder:
 
 ```bash
-python -m venv venv && venv/bin/pip install -r requirements.txt
-cd backend
-../venv/bin/python main.py                      # one scrape cycle → data/rmt-finder.db
-../venv/bin/uvicorn api:app --port 8000         # API at localhost:8000
-../venv/bin/python scheduler.py                 # or: keep scraping every 15 min
+cd /c/code/rmt-finder
 ```
 
-Frontend:
+Create the virtual environment:
 
 ```bash
-cd frontend
-npm install
-npm run dev        # localhost:5173, talks to the API at localhost:8000
+python -m venv venv
 ```
 
-Tests run in CI on every push, or locally with `venv/bin/pytest -q` (46 tests)
-and `npm test` in `frontend/` (33 tests).
+Install the backend dependencies into it:
+
+```bash
+venv/Scripts/python.exe -m pip install -r requirements.txt
+```
+
+Create the database tables:
+
+```bash
+venv/Scripts/python.exe backend/migrate.py
+```
+
+Install the frontend dependencies:
+
+```bash
+npm --prefix frontend install
+```
+
+### Every time
+
+Run each step in its own terminal. Start every terminal in the repo root:
+
+```bash
+cd /c/code/rmt-finder
+```
+
+**1. Scrape once** to fill `data/rmt-finder.db` with every city. Takes a few
+minutes:
+
+```bash
+venv/Scripts/python.exe backend/main.py
+```
+
+**2. API**, at http://localhost:8000. Leave it running:
+
+```bash
+venv/Scripts/python.exe -m uvicorn api:app --app-dir backend --reload --port 8000
+```
+
+**3. Frontend**, at http://localhost:5173. Leave it running:
+
+```bash
+npm --prefix frontend run dev
+```
+
+Open http://localhost:5173. Add `?city=langford` (or `?city=victoria`) to
+link straight to a city.
+
+To keep scraping every 15 minutes instead of once, as production does, run
+the scheduler in place of step 1:
+
+```bash
+venv/Scripts/python.exe backend/scheduler.py
+```
+
+### Tests
+
+Both suites also run in CI on every push.
+
+```bash
+venv/Scripts/python.exe -m pytest -q
+```
+
+```bash
+npm --prefix frontend test
+```
 
 ## Deployment
 
@@ -103,4 +169,5 @@ v1 — the full reasoning and step-by-step runbook is in
 - Dockerize (compose file for the API + scheduler pair)
 - Publish each run as a static JSON snapshot to a CDN, decoupling serving
   uptime from the scraper box
-- More cities, more booking platforms (the scraper is adapter-based)
+- More cities (adding a city is a roster change in `scraper/clinics.py`) and
+  more booking platforms (the scraper is adapter-based)
