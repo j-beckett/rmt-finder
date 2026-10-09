@@ -203,13 +203,13 @@ def test_clinic_count_and_timezone_are_per_city(tmp_path, monkeypatch):
 
 
 def test_envelope_carries_the_configured_clinic_count(tmp_path, monkeypatch):
-    from scraper.clinics import CLINICS
+    from scraper.clinics import CLINICS, clinics_in_city
 
     client, _ = make_client(tmp_path, monkeypatch)
 
     body = client.get("/api/availability").json()
 
-    assert body["clinics_total"] == len(CLINICS)
+    assert body["clinics_total"] == len(clinics_in_city(CLINICS, "victoria"))
 
 
 def test_frontend_build_is_served_from_root_when_present(tmp_path, monkeypatch):
@@ -431,3 +431,35 @@ def test_api_warns_about_a_suspiciously_long_quiet_window(
         pass
 
     assert "22h20m" in caplog.text
+
+
+def test_cities_lists_roster_cities_with_display_names(tmp_path, monkeypatch):
+    import config
+
+    use_cities(monkeypatch, "victoria", "Langford", "victoria")
+    monkeypatch.setattr(config, "CITY_NAMES", {"langford": "Langford & West Shore"})
+    client, _ = make_client(tmp_path, monkeypatch)
+
+    body = client.get("/api/cities").json()
+
+    assert body == [
+        {"slug": "langford", "name": "Langford & West Shore"},
+        {"slug": "victoria", "name": "Victoria"},
+    ]
+
+
+def test_envelope_names_the_city_it_serves(tmp_path, monkeypatch):
+    import config
+
+    use_cities(monkeypatch, "victoria", "langford")
+    monkeypatch.setattr(config, "CITY_NAMES", {"langford": "Langford & West Shore"})
+    client, _ = make_client(tmp_path, monkeypatch)
+
+    default = client.get("/api/availability").json()
+    langford = client.get("/api/availability", params={"city": "Langford"}).json()
+
+    assert (default["city"], default["city_name"]) == ("victoria", "Victoria")
+    assert (langford["city"], langford["city_name"]) == (
+        "langford",
+        "Langford & West Shore",
+    )

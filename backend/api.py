@@ -93,6 +93,11 @@ def _dedupe_slots(slots: list) -> list:
     return unique
 
 
+@app.get("/api/cities")
+def list_cities():
+    return [{"slug": city, "name": config.city_name(city)} for city in cities(CLINICS)]
+
+
 @app.get("/api/availability")
 def availability(
     city: str | None = None,
@@ -107,6 +112,8 @@ def availability(
     run, slots = good if good else (None, [])
     slots = _dedupe_slots(slots)
     return {
+        "city": city,
+        "city_name": config.city_name(city),
         "scraped_at": run.finished_at if run else None,
         "latest_attempt_at": latest.finished_at if latest else None,
         "clinics_attempted": run.clinics_attempted if run else None,

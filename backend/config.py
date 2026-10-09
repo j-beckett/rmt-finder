@@ -20,12 +20,20 @@ def db_path() -> str:
 # City → IANA timezone. Slot start times carry a fixed UTC offset, but working
 # out which calendar day a slot falls on (for the Today/Tomorrow filter) needs
 # the city's zone so PST/PDT is handled correctly. Add a row per new city.
-CITY_TIMEZONES = {"Victoria": "America/Vancouver"}
+CITY_TIMEZONES = {"Victoria": "America/Vancouver", "Langford": "America/Vancouver"}
 DEFAULT_CITY = "Victoria"
 
 # Use only the pinned tzdata package, never host tz data, so every machine
 # agrees on rule changes (e.g. BC's permanent UTC-7 from 2026-11-01).
 zoneinfo.reset_tzpath(to=[])
+
+
+# Display names where the city key alone isn't enough; others are title-cased.
+CITY_NAMES = {"langford": "Langford & West Shore"}
+
+
+def city_name(city: str) -> str:
+    return CITY_NAMES.get(city.lower(), city.title())
 
 
 def timezone_for_city(city: str | None) -> str:

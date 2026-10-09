@@ -98,7 +98,9 @@ def test_run_forever_continues_to_next_cycle_after_failing_scrape(
             raise KeyboardInterrupt
 
     with pytest.raises(KeyboardInterrupt):
-        scheduler.run_forever(scrape=flaky_scrape, sleep=fake_sleep)
+        scheduler.run_forever(
+            scrape=flaky_scrape, sleep=fake_sleep, cities=["victoria"]
+        )
 
     assert len(calls) == 2
     run = Storage(str(db_path)).latest_run("victoria")

@@ -61,6 +61,18 @@ EXCLUDED_TREATMENT_KEYWORDS = [
     "face",
     "therapeutic exercise",
     "stretch therapy",
+    "buccal",
+    "instrument assisted",
+    "mastectomy",
+    "breast",
+    "abdominal",
+    "c-section",
+    "c- section",
+    "child",
+    "return visit",
+    "va massage",
+    "non-registered",
+    "certified massage",
 ]
 
 
@@ -87,8 +99,9 @@ def jane_rmt(
     Most clinics use the defaults. `discipline_names` overrides which Jane
     discipline(s) count as massage therapy (e.g. a clinic that names its
     discipline just "Massage" instead of "Massage Therapy"). `extra_excludes`
-    adds clinic-specific treatment-name exclusions on top of the shared list
-    (e.g. "non-registered" for a clinic that mixes RMT and non-RMT massage).
+    adds treatment-name exclusions on top of the shared list, only for terms
+    that are wrong at this clinic but fine elsewhere; anything that is never
+    an RMT slot belongs in the shared list.
     """
     return JaneAppConfig(
         name=name,
@@ -140,17 +153,31 @@ CLINICS = [
     jane_rmt("Atlas Health Therapy", "atlashealththerapy"),
     jane_rmt("Discovery Health", "discoveryhealth"),
     jane_rmt("Wild Cove Massage Therapy", "wildcovemassagetherapy"),
-    # Acupuncture-heavy clinic that also lists specialized "Breast Massage"
-    # treatments under massage therapy; keep those out of general RMT results.
-    jane_rmt("Pearl Healthcare", "pearlhealthcare", extra_excludes=["breast"]),
-    # Names its discipline just "Massage" (not "Massage Therapy") and sells
-    # non-RMT massage under it, so it needs a per-clinic override.
+    jane_rmt("Pearl Healthcare", "pearlhealthcare"),
+    # Names its discipline just "Massage" (not "Massage Therapy"), so it
+    # needs a per-clinic override.
     jane_rmt(
         "Victoria Centre Acupuncture and Massage",
         "vcaspa",
         discipline_names=["Massage"],
-        extra_excludes=["non-registered", "certified massage"],
     ),
+    # Langford & West Shore — added 2026-10-08 after web search + location
+    # verification. Includes Colwood's Wale Rd and Sooke Rd clinics (see
+    # docs/plans/multi-city-langford.md).
+    jane_rmt("Thetis Massage Therapy", "thetismassage", city="langford"),
+    jane_rmt("Westshore Massage Therapy", "westshoremassagetherapy", city="langford"),
+    jane_rmt("Aurora Health & Wellness", "aurorahealthclinic", city="langford"),
+    jane_rmt("Align Health", "alignhealth", city="langford"),
+    jane_rmt("Driftwood Sport & Wellness", "driftwoodhealth", city="langford"),
+    jane_rmt("Lucid Integrative Health", "lucidintegrativehealth", city="langford"),
+    jane_rmt(
+        "Eileen Durant RMT", "eileendurantregisteredmassagetherapy", city="langford"
+    ),
+    jane_rmt("Story and Depth Massage", "storyanddepthmassage", city="langford"),
+    jane_rmt("Sanctum Massage & Wellness", "sanctumwellness", city="langford"),
+    jane_rmt("Symmetry Wellness", "symmetryco", city="langford"),
+    jane_rmt("Sync Massage Therapy", "synctherapy", city="langford"),
+    jane_rmt("Kari Lund RMT", "karilundrmt", city="langford"),
     # Needs investigation
     # jane_rmt("Solace Massage", "solacemassagevictoria"), dupes
     # Deliberately excluded — WCCMT public intern clinic. Treatments are
