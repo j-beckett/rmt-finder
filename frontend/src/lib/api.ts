@@ -2,6 +2,10 @@ import type { Slot } from './slots'
 
 /** Envelope returned by GET /api/availability. */
 export interface AvailabilityResponse {
+  /** City key actually served (the API's default when none was asked for). */
+  city: string
+  /** Display name, e.g. "Langford & West Shore". */
+  city_name: string
   scraped_at: string | null
   latest_attempt_at: string | null
   clinics_attempted: number | null
@@ -15,6 +19,12 @@ export interface AvailabilityResponse {
   /** Latest overnight quiet window (city-local ISO); null when off. */
   quiet_hours: QuietWindow | null
   slots: Slot[]
+}
+
+/** A city on the roster, from GET /api/cities. */
+export interface City {
+  slug: string
+  name: string
 }
 
 /** An overnight pause in checks, e.g. 23:00 to 06:00 city time. */
@@ -34,7 +44,21 @@ export const SCRAPE_INTERVAL_MINUTES: number = Number(
   import.meta.env.VITE_SCRAPE_INTERVAL_MINUTES ?? '15',
 )
 
-export async function fetchAvailability(): Promise<AvailabilityResponse> {
+export async function fetchCities(): Promise<City[]> {
+  const response = await fetch(`${API_BASE_URL}/api/cities`)
+  if (!response.ok) {
+    throw new Error(`Cities request failed: ${response.status}`)
+  }
+  return response.json()
+}
+
+/** A ?city= the API doesn't know, e.g. a typo in a shared link. */
+export class UnknownCityError extends Error {}
+
+/** `city` null = the API's default city. */
+export async function fetchAvailability(
+  city: string | null,
+): Promise<AvailabilityResponse> {
   // Dev-only: ?mock=<scenario> serves a crafted envelope so each UI state
   // can be reviewed by eye (see mockEnvelopes.ts for scenarios). The dynamic
   // import keeps the fixtures out of production builds.
@@ -46,7 +70,12 @@ export async function fetchAvailability(): Promise<AvailabilityResponse> {
     }
   }
 
-  const response = await fetch(`${API_BASE_URL}/api/availability`)
+  const query = city ? `?city=${encodeURIComponent(city)}` : ''
+  const response = await fetch(`${API_BASE_URL}/api/availability${query}`)
+  // A shared link with a typo'd or retired city lands here.
+  if (response.status === 404 && city) {
+    throw new UnknownCityError(`We don't cover "${city}" yet`)
+  }
   if (!response.ok) {
     throw new Error(`Availability request failed: ${response.status}`)
   }

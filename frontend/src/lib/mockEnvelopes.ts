@@ -73,6 +73,8 @@ function envelope(overrides: Partial<AvailabilityResponse>): AvailabilityRespons
     clinics_attempted: 23,
     failed_clinics: [],
     window_days: 3,
+    city: 'victoria',
+    city_name: 'Victoria',
     timezone: 'America/Vancouver',
     clinics_total: 23,
     quiet_hours: null,

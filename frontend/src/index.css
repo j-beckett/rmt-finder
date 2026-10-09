@@ -76,6 +76,87 @@ html {
     box-shadow: 3px 3px 0 var(--color-forest);
   }
 
+  /* City dropdown set in the heading: reads as the title, lime underline marks it tappable. */
+  /* City switcher: cream card styling. Lime stays reserved for
+     "active"/"book" so a utility menu doesn't shout. */
+  .city-menu {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0.6rem;
+  }
+  .city-menu-button {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.45rem;
+    font-size: 0.85rem;
+    font-weight: 600;
+    color: var(--color-forest);
+    background: var(--color-card);
+    border: 2px solid var(--color-forest);
+    border-radius: 999px;
+    padding: 0.4rem 0.95rem;
+    box-shadow: 2px 2px 0 var(--color-forest);
+    cursor: pointer;
+    transition:
+      transform 80ms ease,
+      box-shadow 80ms ease;
+  }
+  .city-menu-button:hover {
+    transform: translate(-1px, -1px);
+    box-shadow: 3px 3px 0 var(--color-forest);
+  }
+  .city-menu-button:focus-visible,
+  .city-menu-list:focus-visible {
+    outline: 3px solid var(--color-forest);
+    outline-offset: 3px;
+  }
+  .city-menu-chevron {
+    font-size: 0.75em;
+    transition: transform 120ms ease;
+  }
+  .city-menu-button[aria-expanded="true"] .city-menu-chevron {
+    transform: rotate(180deg);
+  }
+  .city-menu-list {
+    position: absolute;
+    z-index: 10;
+    top: calc(100% + 0.6rem);
+    left: 0;
+    min-width: 14rem;
+    margin: 0;
+    padding: 0.35rem;
+    list-style: none;
+    background: var(--color-card);
+    border: 2px solid var(--color-forest);
+    border-radius: 16px;
+    box-shadow: 4px 4px 0 var(--color-forest);
+  }
+  /* Narrow phones: open leftward from the button so the list stays on screen. */
+  @media (max-width: 400px) {
+    .city-menu-list {
+      left: auto;
+      right: 0;
+    }
+  }
+  .city-menu-list li {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 1rem;
+    padding: 0.6rem 0.75rem;
+    border-radius: 10px;
+    font-size: 0.95rem;
+    white-space: nowrap;
+    cursor: pointer;
+  }
+  .city-menu-list li[data-active="true"] {
+    background: #ebe3d1; /* a step darker than the card */
+  }
+  .city-menu-list li[aria-selected="true"] {
+    font-weight: 600;
+  }
+
   /* Day separator badge. */
   .day-badge {
     display: inline-block;
