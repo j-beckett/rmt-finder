@@ -112,7 +112,6 @@ html {
     outline-offset: 3px;
   }
   .city-menu-chevron {
-    font-size: 0.75em;
     transition: transform 120ms ease;
   }
   .city-menu-button[aria-expanded="true"] .city-menu-chevron {
@@ -124,6 +123,8 @@ html {
     top: calc(100% + 0.6rem);
     left: 0;
     min-width: 14rem;
+    /* The button sits at the left gutter, so this keeps the list on screen. */
+    max-width: calc(100vw - 2rem);
     margin: 0;
     padding: 0.35rem;
     list-style: none;
@@ -131,13 +132,6 @@ html {
     border: 2px solid var(--color-forest);
     border-radius: 16px;
     box-shadow: 4px 4px 0 var(--color-forest);
-  }
-  /* Narrow phones: open leftward from the button so the list stays on screen. */
-  @media (max-width: 400px) {
-    .city-menu-list {
-      left: auto;
-      right: 0;
-    }
   }
   .city-menu-list li {
     display: flex;
