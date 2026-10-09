@@ -47,41 +47,47 @@ class JaneAppAdapter(BaseAdapter):
 
         return None
 
-    def _fetch_router_options(self, clinic, session) -> dict:
-        url = f"https://{clinic.subdomain}.janeapp.com"
+    def _location_id(self, page: str) -> int | None:
+        """The location a booking page is for, as Jane states it in the page."""
+        match = re.search(r"App\.location_id\s*=\s*(\d+)", page)
+        return int(match.group(1)) if match else None
+
+    def _booking_page(self, clinic, session) -> tuple[str, str]:
+        """(page text, url) of the clinic's booking page, the page that states
+        its own location_id. Raises rather than guess between locations."""
+        base = f"https://{clinic.subdomain}.janeapp.com"
 
         # Jane sets cookies on the homepage that the openings API requires,
         # so the same session must be used for every request to this clinic
-        response = session.get(url)
+        home = session.get(base)
+        if home.status_code != 200:
+            raise ValueError(f"Jane homepage returned {home.status_code}")
 
-        if response.status_code != 200:
-            print(f"Failed to fetch {clinic.name}: {response.status_code}")
-            return {}
-
-        # Count curly braces to extract the complete routerOptions object
-        raw = self._extract_js_object(response.text, r"const routerOptions\s*=\s*\{")
-
-        if not raw:
-            # Some clinics only embed routerOptions on a location booking page
-            location_paths = re.findall(
-                r'href="(/locations/[^#"]+/book)"', response.text
+        slugs = list(
+            dict.fromkeys(re.findall(r'href="/locations/([^/#"?]+)', home.text))
+        )
+        if not clinic.location and len(slugs) > 1:
+            raise ValueError(
+                f"Jane account has {len(slugs)} locations ({', '.join(slugs)});"
+                " set location= in clinics.py"
             )
-            unique_paths = list(dict.fromkeys(location_paths))
+        if not clinic.location and self._location_id(home.text) is not None:
+            return home.text, base
 
-            for path in unique_paths[:3]:
-                location_url = f"https://{clinic.subdomain}.janeapp.com{path}"
-                print(f"  Trying location path: {location_url}")
-                location_response = session.get(location_url)
+        slug = clinic.location or (slugs[0] if slugs else None)
+        if slug is None:
+            raise ValueError("No location found on the Jane homepage")
+        url = f"{base}/locations/{slug}/book"
+        page = session.get(url)
+        if page.status_code != 200 or self._location_id(page.text) is None:
+            raise ValueError(
+                f"Jane location '{slug}' not found (account has: {', '.join(slugs)})"
+            )
+        return page.text, url
 
-                if location_response.status_code != 200:
-                    continue
-
-                raw = self._extract_js_object(
-                    location_response.text, r"const routerOptions\s*=\s*\{"
-                )
-
-                if raw:
-                    break
+    def _parse_router_options(self, clinic, page: str) -> dict:
+        # Count curly braces to extract the complete routerOptions object
+        raw = self._extract_js_object(page, r"const routerOptions\s*=\s*\{")
 
         if not raw:
             print(f"Could not find routerOptions for {clinic.name}")
@@ -143,31 +149,34 @@ class JaneAppAdapter(BaseAdapter):
                 )
             ]
 
-            matching_treatments = [
-                {
-                    "treatment_id": t["id"],
-                    "discipline_id": t["discipline_id"],
-                    "duration_minutes": t["treatment_duration"] // 60,
-                    # Same double-escaping as staff names (see _build_staff_lookup).
-                    "name": html.unescape(t["name"]),
-                }
-                for t in treatments
-                if t["discipline_id"] in matching_discipline_ids
-                and t["treatment_duration"] // 60 in durations
-                and not any(kw in t.get("name", "").lower() for kw in exclude_keywords)
-            ]
+            def matching(allowed_durations, required_keywords=None):
+                return [
+                    {
+                        "treatment_id": t["id"],
+                        "discipline_id": t["discipline_id"],
+                        "duration_minutes": t["treatment_duration"] // 60,
+                        # Same double-escaping as staff names (see _build_staff_lookup).
+                        "name": html.unescape(t["name"]),
+                    }
+                    for t in treatments
+                    if t["discipline_id"] in matching_discipline_ids
+                    and t["treatment_duration"] // 60 in allowed_durations
+                    and not any(kw in t.get("name", "").lower() for kw in exclude_keywords)
+                    and (
+                        required_keywords is None
+                        or any(kw in t.get("name", "").lower() for kw in required_keywords)
+                    )
+                ]
 
-            for t in treatments:
-                if (
-                    t["discipline_id"] in matching_discipline_ids
-                    and t["treatment_duration"] // 60 in durations
-                    and not any(
-                        kw in t.get("name", "").lower() for kw in exclude_keywords
-                    )
-                ):
-                    print(
-                        f"    Matched treatment: [{t['id']}] {t['name']} (discipline_id={t['discipline_id']})"
-                    )
+            matching_treatments = matching(durations) or matching(
+                service.get("first_visit_durations", []),
+                service.get("first_visit_keywords", []),
+            )
+
+            for t in matching_treatments:
+                print(
+                    f"    Matched treatment: [{t['treatment_id']}] {t['name']} (discipline_id={t['discipline_id']})"
+                )
 
             if matching_treatments:
                 service_map[service_type] = matching_treatments
@@ -193,13 +202,13 @@ class JaneAppAdapter(BaseAdapter):
             return False
 
     def _fetch_openings(
-        self, clinic, service_type, treatment, staff_lookup, session
+        self, clinic, service_type, treatment, discovered, session
     ) -> list[AvailabilityResult]:
         """Query the Jane openings API for a single treatment and return results."""
         url = (
             f"https://{clinic.subdomain}.janeapp.com"
             f"/api/v2/openings/for_discipline"
-            f"?location_id=1"
+            f"?location_id={discovered['location_id']}"
             f"&discipline_id={treatment['discipline_id']}"
             f"&treatment_id={treatment['treatment_id']}"
             f"&num_days=2"
@@ -240,12 +249,12 @@ class JaneAppAdapter(BaseAdapter):
                     clinic_name=clinic.name,
                     city=clinic.city,
                     platform="janeapp",
-                    rmt_name=staff_lookup.get(staff_id, "Unknown"),
+                    rmt_name=discovered["staff_lookup"].get(staff_id, "Unknown"),
                     service_type=service_type,
                     treatment_name=treatment["name"],
                     duration_minutes=treatment["duration_minutes"],
                     start_at=start_at,
-                    booking_url=f"https://{clinic.subdomain}.janeapp.com",
+                    booking_url=discovered["booking_url"],
                 )
             )
 
@@ -253,7 +262,8 @@ class JaneAppAdapter(BaseAdapter):
 
     def discover(self, clinic, session) -> dict:
         """Discover Jane-specific IDs needed to query availability."""
-        router = self._fetch_router_options(clinic, session)
+        page, booking_url = self._booking_page(clinic, session)
+        router = self._parse_router_options(clinic, page)
 
         if not router:
             return {}
@@ -273,6 +283,8 @@ class JaneAppAdapter(BaseAdapter):
         return {
             "service_map": service_map,
             "staff_lookup": self._build_staff_lookup(router.get("staff_members", [])),
+            "location_id": self._location_id(page),
+            "booking_url": booking_url,
         }
 
     def fetch_availability(self, clinic) -> list[AvailabilityResult]:
@@ -292,11 +304,7 @@ class JaneAppAdapter(BaseAdapter):
             for treatment in treatments:
                 results.extend(
                     self._fetch_openings(
-                        clinic,
-                        service_type,
-                        treatment,
-                        discovered["staff_lookup"],
-                        session,
+                        clinic, service_type, treatment, discovered, session
                     )
                 )
 

@@ -63,8 +63,30 @@ karilundrmt.
 6. Frontend: `lib/city.ts` URL helpers (vitest first), the `fetchCities` and
    city-aware `fetchAvailability` API calls, and `CityPicker` in the heading.
 
-## Found while testing (not fixed here)
+## Jane locations (fixed 2026-10-08)
 
-- The Jane adapter hardcodes `location_id=1`. Kari Lund's location isn't 1,
-  so its openings call returns 404 and it shows no slots. Multi-location
-  accounts (Thetis has two) only get location 1 scraped.
+The adapter used to hardcode `location_id=1`. Jane requires the id, and a
+wrong one gives a 404 (Kari Lund is #2, Metchosin #3) or another location's
+openings (Natural Balance is #4 in an account whose #1 is Saanichton). It now
+reads `App.location_id` from the booking page on every scrape. Multi-location
+accounts name their location by URL slug (`jane_rmt(..., location=...)`), and
+an account with several locations and no slug fails loudly instead of
+guessing. Three Victoria accounts turned out to be multi-location:
+Equilibrium (3 sites), Victoria Massage Therapy (one "location" per RMT;
+Noelle Daigle, #11, had never been scraped) and A Balanced Body (clinic plus
+yoga studio).
+
+## First visits booked as 70-75 min (2026-10-08)
+
+Some clinics book a new patient's first visit as 70-75 min (a 60-min
+massage plus an assessment) and have no 60-min option a new patient can
+book: Christina Baptista, Maggie Kay and Ocean View. Rule: 60 min as
+before; **only if a clinic has no accepted 60-min treatment**, accept 70-75
+min treatments named as a first visit ("initial", "first visit", "new
+patient"). Shared excludes still apply. 43 of 46 clinics also have 75-min
+treatments, and 10 have a 75-min "initial" next to their 60s. Taking those
+too would list each opening twice (as a 60 and a 75), so the fallback never
+runs when a 60 exists. A guard test pins this, and was mutation-checked to
+fail when the rule is loosened. Live check: no opening listed twice in either
+city, apart from Massage Therapy Group's known same-length double listing,
+which the API's `_dedupe_slots` already collapses.
