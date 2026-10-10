@@ -52,20 +52,20 @@ working, private dashboard at `https://stats.studiobeckett.ca`.
 
 ## Acceptance criteria
 
-- [ ] Unit file, full Caddyfile and pinned version are in the repo
-- [ ] pytest config checks exist and pass; they fail if the Caddy and unit
+- [x] Unit file, full Caddyfile and pinned version are in the repo
+- [x] pytest config checks exist and pass; they fail if the Caddy and unit
       ports drift apart or the listen address leaves `127.0.0.1`
-- [ ] Runbook's GoatCounter commands are checked against the docs for the
+- [x] Runbook's GoatCounter commands are checked against the docs for the
       pinned version
-- [ ] Runbook covers every step listed above, in an order that works
+- [x] Runbook covers every step listed above, in an order that works
       (DNS resolves before the Caddy reload)
-- [ ] **Owner:** `https://stats.studiobeckett.ca` loads with a valid
+- [x] **Owner:** `https://stats.studiobeckett.ca` loads with a valid
       certificate and requires login
-- [ ] **Owner:** `rmtfinder.studiobeckett.ca` still works after the Caddy reload
-- [ ] **Owner:** GoatCounter is not reachable directly on its port from outside
-- [ ] **Owner:** memory check after install shows healthy headroom; the
+- [x] **Owner:** `rmtfinder.studiobeckett.ca` still works after the Caddy reload
+- [x] **Owner:** GoatCounter is not reachable directly on its port from outside
+- [x] **Owner:** memory check after install shows healthy headroom; the
       service shows its memory cap
-- [ ] **Owner:** the service survives `sudo reboot`
+- [x] **Owner:** the service survives `sudo reboot`
 
 ## Blocked by
 
