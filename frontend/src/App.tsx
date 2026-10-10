@@ -7,9 +7,11 @@ import {
   type City,
   UnknownCityError,
 } from '@/lib/api'
+import { bookClick, isTrackableClick, pageView } from '@/lib/analytics'
 import { cityFromSearch, searchWithCity } from '@/lib/city'
 import { isStale, latestCheckFailed, quietNote } from '@/lib/freshness'
 import { menuKey, openMenu, type MenuState } from '@/lib/menu'
+import { send } from '@/lib/track'
 import {
   formatDayLabel,
   formatPillLabel,
@@ -68,6 +70,11 @@ function App() {
       current = false
     }
   }, [city])
+
+  useEffect(() => {
+    // State changes only when a fetch starts or settles, so this is one view per city shown.
+    send(pageView(state, window.location.search))
+  }, [state])
 
   useEffect(() => {
     // Without the list the title just shows the served city, so failure is quiet.
@@ -465,12 +472,18 @@ function SlotGroups({
 }
 
 function SlotCard({ slot }: { slot: Slot }) {
+  // Fire-and-forget: no preventDefault, so the link opens exactly as before.
+  const onBookClick = (event: React.MouseEvent) => {
+    if (isTrackableClick(event)) send(bookClick(slot))
+  }
   return (
     <a
       className="slot-card"
       href={slot.booking_url}
       target="_blank"
       rel="noopener noreferrer"
+      onClick={onBookClick}
+      onAuxClick={onBookClick}
     >
       <span className="slot-time display">{formatSlotTime(slot.start_at)}</span>
       <span className="slot-date">{formatShortDate(slot.start_at)}</span>

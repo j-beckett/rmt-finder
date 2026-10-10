@@ -45,21 +45,21 @@ after.
 
 ## Acceptance criteria
 
-- [ ] vitest covers every event-contract row, including: default city with no
+- [x] vitest covers every event-contract row, including: default city with no
       `?city=`, city switch, Back/Forward, unknown city (raw value in title,
       not path), and API error (no hit)
-- [ ] vitest covers trackable clicks: left yes, middle yes, right no
-- [ ] vitest covers opt-out: set, persist, clear with `=off`, throwing storage
-- [ ] vitest covers the wrapper: no-op when opted out, when `goatcounter` is
+- [x] vitest covers trackable clicks: left yes, middle yes, right no
+- [x] vitest covers opt-out: set, persist, clear with `=off`, throwing storage
+- [x] vitest covers the wrapper: no-op when opted out, when `goatcounter` is
       absent, and outside production; never throws
-- [ ] Tracking params (`fbclid`, `utm_*`) never appear in a page-view path
+- [x] Tracking params (`fbclid`, `utm_*`) never appear in a page-view path
 - [ ] Dev server makes no request to `stats.studiobeckett.ca`
-- [ ] Production build includes the script with on-load counting disabled
+- [x] Production build includes the script with on-load counting disabled
 - [ ] Page and booking links work normally with the script blocked
-- [ ] No component-level tests needed: the wiring stays thin, and the logic
+- [x] No component-level tests needed: the wiring stays thin, and the logic
       lives in the tested functions
 - [ ] README diagram renders and the paragraph matches what is tracked
-- [ ] `npm test`, `npm run build`, `npm run lint` and `pytest` pass
+- [x] `npm test`, `npm run build`, `npm run lint` and `pytest` pass
 
 ## Blocked by
 

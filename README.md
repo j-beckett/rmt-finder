@@ -31,6 +31,7 @@ flowchart LR
     S -->|"runs + slots"| DB[(SQLite)]
     DB --> API[FastAPI]
     API -->|"/api/availability"| FE[React frontend]
+    FE -->|"city views, Book clicks"| GC[GoatCounter<br/>self-hosted]
 ```
 
 A scheduler process runs a scrape cycle every 15 minutes: each clinic's Jane App
@@ -39,6 +40,18 @@ treatments are matched and filtered, and the resulting slots are written to
 SQLite along with a record of the run itself — when it ran, which clinics
 succeeded, which failed. A FastAPI service reads the same database and serves
 both the JSON API and the built frontend from one origin.
+
+Traffic analytics run on a self-hosted GoatCounter instance on the same server:
+cookieless, no personal data, no consent banner. It records two things. **City
+views**, one per city actually shown (`/victoria`, `/langford`), sent once the
+API answers: a failed load counts as nothing, and tracking parameters never
+split a city into extra rows. **Book clicks** per clinic location
+(`book/<clinic-slug>`), keyed by a fixed slug so a clinic's history survives a
+rename. That one answers the question that matters: which clinics does RMT
+Finder actually send people to? The owner's own browsers are opted out, and
+local development sends nothing. Empty-results tracking ("Nothing left today")
+was deliberately dropped: Today is the default view, so every evening visit
+lands on an empty Today, and a quiet day reflects clinic hours, not demand.
 
 ## Design decisions
 
