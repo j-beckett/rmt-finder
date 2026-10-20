@@ -14,6 +14,7 @@ import type { SlotWindow } from '@/lib/slots'
 import { Availability } from '@/components/Availability'
 import { CityMenu } from '@/components/CityMenu'
 import { Footer } from '@/components/Footer'
+import logoIcon from '@/assets/logo-icon.png'
 
 type State =
   | { status: 'loading' }
@@ -79,6 +80,10 @@ function App() {
     <>
       <main className="mx-auto max-w-3xl px-4 py-8 sm:py-12">
         <header>
+          <div className="flex items-center gap-3 mb-6 sm:mb-7">
+            <img src={logoIcon} alt="" className="h-10 w-auto" />
+            <span className="display text-2xl leading-none">rmt finder</span>
+          </div>
           <h1 className="display text-4xl sm:text-5xl leading-none tracking-tight">
             Massage openings{cityName && ` in ${cityName}`}
           </h1>
