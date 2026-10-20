@@ -32,7 +32,7 @@ export function SlotGroups({
   )
 }
 
-function SlotCard({ slot }: { slot: Slot }) {
+export function SlotCard({ slot }: { slot: Slot }) {
   // Fire-and-forget: no preventDefault, so the link opens exactly as before.
   const onBookClick = (event: React.MouseEvent) => {
     if (isTrackableClick(event)) send(bookClick(slot))

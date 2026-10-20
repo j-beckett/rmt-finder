@@ -1,0 +1,44 @@
+{
+  "projectId": "c3048088-d37a-4d2b-9d0b-24d3ab7b3431",
+  "shape": "package",
+  "pkg": "frontend",
+  "globalName": "RmtFinder",
+  "buildCmd": "node .design-sync/build-css.mjs",
+  "srcDir": "src/components",
+  "tsconfig": ".design-sync/tsconfig.json",
+  "cssEntry": ".design-sync/.cache/ds.css",
+  "extraFonts": [
+    "node_modules/@fontsource-variable/fraunces/full.css",
+    "node_modules/@fontsource-variable/inter/index.css",
+    "node_modules/@fontsource/shadows-into-light/index.css"
+  ],
+  "entry": ".design-sync/entry.ts",
+  "componentSrcMap": {
+    "Availability": "src/components/Availability.tsx",
+    "CityMenu": "src/components/CityMenu.tsx",
+    "Footer": "src/components/Footer.tsx",
+    "MetaLine": "src/components/MetaLine.tsx",
+    "SlotGroups": "src/components/SlotList.tsx",
+    "SlotCard": "src/components/SlotList.tsx"
+  },
+  "dtsPropsFor": {
+    "Availability": "/** Envelope from GET /api/availability. scraped_at null renders the \"No data yet\" state; start_at is clinic-local ISO with offset (e.g. \"2026-07-17T14:30:00-07:00\"), scraped_at/latest_attempt_at are UTC ISO. */\n  data: { city: string; city_name: string; scraped_at: string | null; latest_attempt_at: string | null; clinics_attempted: number | null; failed_clinics: string[]; window_days: number; timezone: string; clinics_total: number; quiet_hours: { start: string; end: string } | null; slots: Array<{ clinic_name: string; clinic_slug: string | null; city: string; platform: string; rmt_name: string; service_type: string; treatment_name: string; duration_minutes: number; start_at: string; booking_url: string }> };\n  /** Active day pill: 0 = today, 1 = tomorrow, n = n days out, or \"all\". */\n  activeWindow: number | \"all\";\n  onWindowChange: (window: number | \"all\") => void;",
+    "CityMenu": "/** Cities on the roster, in display order. */\n  cities: Array<{ slug: string; name: string }>;\n  /** Selected city slug; null = none chosen (button reads \"Choose a city\"). */\n  value: string | null;\n  onChange: (slug: string) => void;",
+    "Footer": "/** No props: a fixed Studio Beckett credit line, centered in a max-w-3xl column. */",
+    "MetaLine": "/** Same envelope Availability takes; scraped_at must be non-null. */\n  data: { city: string; city_name: string; scraped_at: string | null; latest_attempt_at: string | null; clinics_attempted: number | null; failed_clinics: string[]; window_days: number; timezone: string; clinics_total: number; quiet_hours: { start: string; end: string } | null; slots: Array<{ clinic_name: string; clinic_slug: string | null; city: string; platform: string; rmt_name: string; service_type: string; treatment_name: string; duration_minutes: number; start_at: string; booking_url: string }> };\n  /** Epoch ms used for the \"Last updated N minutes ago\" math. */\n  nowMs: number;\n  /** false hides the \"all clinics checked\" suffix. */\n  latestCheckOk: boolean;\n  /** Overnight-pause sentence shown as a second line, or null. */\n  quietNote: string | null;",
+    "SlotGroups": "/** Slots, already sorted soonest-first; grouped into one section per clinic-local day. */\n  slots: Array<{ clinic_name: string; clinic_slug: string | null; city: string; platform: string; rmt_name: string; service_type: string; treatment_name: string; duration_minutes: number; start_at: string; booking_url: string }>;\n  /** Clinic-local \"YYYY-MM-DD\", used to label day badges Today/Tomorrow. */\n  today: string;\n  /** Show a day badge above each day group (the app does this only in the \"All\" view). */\n  showDayBadges: boolean;",
+    "SlotCard": "/** One bookable opening; the whole card links to booking_url (new tab). start_at is clinic-local ISO with offset, e.g. \"2026-07-17T14:30:00-07:00\". */\n  slot: { clinic_name: string; clinic_slug: string | null; city: string; platform: string; rmt_name: string; service_type: string; treatment_name: string; duration_minutes: number; start_at: string; booking_url: string };"
+  },
+  "overrides": {
+    "Availability": {
+      "cardMode": "column"
+    },
+    "SlotGroups": {
+      "cardMode": "column"
+    },
+    "SlotCard": {
+      "cardMode": "column"
+    }
+  },
+  "readmeHeader": ".design-sync/conventions.md"
+}

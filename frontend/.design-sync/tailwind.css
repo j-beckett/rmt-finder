@@ -1,0 +1,14 @@
+/* Tailwind input for the design-sync bundle: the app's real stylesheet plus a
+   safelist so the design agent has theme/layout utilities beyond what src uses. */
+@import "../src/index.css";
+@source "../src";
+
+@source inline("{bg,text,border}-{cream,card,forest,panel,moss,lime,lime-bright}");
+@source inline("font-{sans,display,hand} font-{normal,medium,semibold,bold,black}");
+@source inline("text-{xs,sm,base,lg,xl,2xl,3xl,4xl,5xl} leading-{none,tight,snug,normal,relaxed} tracking-{tight,normal,wide}");
+@source inline("{sm:,}{flex,grid,block,inline-block,inline-flex,hidden}");
+@source inline("flex-{row,col,wrap} {items,justify}-{start,center,end,between} grid-cols-{1,2,3,4} sm:grid-cols-{2,3}");
+@source inline("{gap,p,px,py,m,mx,my,mt,mb}-{0,0.5,1,1.5,2,2.5,3,3.5,4,5,6,7,8,9,10,12,16}");
+@source inline("max-w-{sm,md,lg,xl,2xl,3xl} mx-auto w-full text-{left,center,right}");
+@source inline("rounded-{md,lg,xl,2xl,full} border border-2 border-dashed");
+@source inline("sm:text-{lg,xl,2xl,3xl,4xl,5xl} sm:py-{6,8,10,12,16} sm:px-{4,6,8} sm:gap-{2,4,6,8}");
