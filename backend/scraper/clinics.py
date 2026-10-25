@@ -156,12 +156,9 @@ CLINICS = [
         "downtownvictoriamassagetherapy",
         slug="downtown-victoria-massage",
     ),
-    jane_rmt("Victoria Clayton RMT", "victoriaclaytonrmt", slug="victoria-clayton-rmt"),
     # New to test
-    jane_rmt("Synergy Massage", "synergymassage", slug="synergy-massage"),
     jane_rmt("The Lab Victoria", "labvictoria", slug="lab-victoria"),
     jane_rmt("Active Health Clinic", "activehealthclinic", slug="active-health"),
-    jane_rmt("Reach Health", "reachhealth", slug="reach-health"),
     jane_rmt("Renew Health", "renew", slug="renew-health"),
     jane_rmt(
         "A Balanced Body",
@@ -355,4 +352,10 @@ CLINICS = [
     # visits (e.g. "60min HOTEL RMT Massage", "...at a Partnered Location").
     # Revisit if we ever want to support mobile/in-home appointments.
     # jane_rmt("Compass Massage", "compassmassage"),
+    # Removed 2026-10-25: not on the Island. Their Jane pages list
+    # 2035 Stephens St, Vancouver and 1851 Kirschner Rd, Kelowna.
+    # jane_rmt("Synergy Massage", "synergymassage", slug="synergy-massage"),
+    # jane_rmt("Victoria Clayton RMT", "victoriaclaytonrmt", slug="victoria-clayton-rmt"),
+    # Removed 2026-10-25: 9710 Second St, Sidney, too far out for Victoria.
+    # jane_rmt("Reach Health", "reachhealth", slug="reach-health"),
 ]
