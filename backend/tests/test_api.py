@@ -334,6 +334,39 @@ def test_availability_collapses_one_opening_listed_under_two_treatments(
     assert len(body["slots"]) == 1
 
 
+def test_collapsed_opening_keeps_the_initial_rows_link(tmp_path, monkeypatch):
+    # Each row links to its own treatment, so the survivor decides where a
+    # new patient lands; Jane's listing order must not.
+    client, storage = make_client(tmp_path, monkeypatch)
+    run_id = storage.record_run(
+        city="victoria",
+        started_at="2026-07-09T10:00:00+00:00",
+        finished_at="2026-07-09T10:01:30+00:00",
+        attempted=1,
+        succeeded=1,
+        failed_clinics=[],
+    )
+    storage.insert_slots(
+        run_id,
+        [
+            make_slot(
+                treatment_name="60 minute RMT Session",
+                booking_url="https://example.com/#/staff_member/7/treatment/87",
+            ),
+            make_slot(
+                treatment_name="Initial 60 minute RMT Session",
+                booking_url="https://example.com/#/staff_member/7/treatment/214",
+            ),
+        ],
+    )
+
+    body = client.get("/api/availability").json()
+
+    assert [s["booking_url"] for s in body["slots"]] == [
+        "https://example.com/#/staff_member/7/treatment/214"
+    ]
+
+
 def test_availability_keeps_genuinely_distinct_openings(tmp_path, monkeypatch):
     # Differ by therapist, start time, or duration → not duplicates, all kept.
     client, storage = make_client(tmp_path, monkeypatch)

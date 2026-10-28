@@ -173,11 +173,6 @@ class JaneAppAdapter(BaseAdapter):
                 service.get("first_visit_keywords", []),
             )
 
-            for t in matching_treatments:
-                print(
-                    f"    Matched treatment: [{t['treatment_id']}] {t['name']} (discipline_id={t['discipline_id']})"
-                )
-
             if matching_treatments:
                 service_map[service_type] = matching_treatments
 
@@ -200,6 +195,17 @@ class JaneAppAdapter(BaseAdapter):
             return now <= slot_time <= cutoff
         except ValueError:
             return False
+
+    def _slot_url(self, discovered, treatment, staff_id) -> str:
+        """Deep link to the RMT's calendar for this treatment, or the
+        treatment's calendar for all RMTs when we don't know who it is."""
+        base = discovered["booking_url"]
+        if staff_id in discovered["staff_lookup"]:
+            return f"{base}#/staff_member/{staff_id}/treatment/{treatment['treatment_id']}"
+        return (
+            f"{base}#/discipline/{treatment['discipline_id']}"
+            f"/treatment/{treatment['treatment_id']}"
+        )
 
     def _fetch_openings(
         self, clinic, service_type, treatment, discovered, session
@@ -229,11 +235,6 @@ class JaneAppAdapter(BaseAdapter):
             return []
 
         openings = response.json()
-        if openings:
-            print(
-                f"    treatment {treatment['treatment_id']}: {len(openings)} openings, first start_at={openings[0].get('start_at')}"
-            )
-
         results = []
 
         for opening in openings:
@@ -255,7 +256,7 @@ class JaneAppAdapter(BaseAdapter):
                     treatment_name=treatment["name"],
                     duration_minutes=treatment["duration_minutes"],
                     start_at=start_at,
-                    booking_url=discovered["booking_url"],
+                    booking_url=self._slot_url(discovered, treatment, staff_id),
                 )
             )
 
@@ -271,15 +272,7 @@ class JaneAppAdapter(BaseAdapter):
 
         disciplines = router.get("disciplines", [])
         treatments = router.get("treatments", [])
-        print(
-            f"  Disciplines ({len(disciplines)}): {[d.get('professional_title') for d in disciplines]}\n"
-        )
-        print(
-            f"  Treatments ({len(treatments)}): first 3 = {[(t.get('name'), t.get('treatment_duration')) for t in treatments[:3]]}\n"
-        )
-
         service_map = self._map_services(clinic, disciplines, treatments)
-        print(f"  Service map: {service_map}\n")
 
         return {
             "service_map": service_map,

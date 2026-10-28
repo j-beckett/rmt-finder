@@ -29,6 +29,7 @@ def kept(name):
         "VA Massage Therapy: Return Visit (60 minutes)",
         "Massage Therapy Return Visit - 60 mins",
         "60 Minute Wellness Massage - Non-Registered Massage Therapy",
+        "Pre/Post Surgical Registered Massage Therapy - 1 hour",
     ],
 )
 def test_shared_excludes_drop_specialty_and_non_rmt_treatments(name):

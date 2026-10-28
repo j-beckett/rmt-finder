@@ -10,7 +10,7 @@ from fastapi.staticfiles import StaticFiles
 
 import config
 from quiet_hours import last_window, long_window_warning
-from scraper.clinics import CLINICS, cities, clinics_in_city
+from scraper.clinics import CLINICS, FIRST_VISIT_KEYWORDS, cities, clinics_in_city
 from storage import Storage
 
 logger = logging.getLogger(__name__)
@@ -71,14 +71,13 @@ def _dedupe_slots(slots: list) -> list:
     an "Initial 60 minute RMT Session" and a plain "60 minute RMT Session"),
     both of which match our massage filter and both of which the openings API
     returns at the same time for the same therapist. The frontend shows only
-    the therapist name and duration, and every slot links to the same clinic
-    booking page, so the extra row is a visible duplicate with nothing to tell
-    it apart. Collapse on (clinic, therapist, start time, duration), keeping the
-    first occurrence so order is preserved. Raw slots stay in the database
+    the therapist name and duration, so the extra row is a visible duplicate.
+    Collapse on (clinic, therapist, start time, duration) in first-seen order,
+    keeping the first-visit row: each row links to its own treatment, and the
+    app is for people looking for a new RMT. Raw slots stay in the database
     untouched, so a clinic double-listing a treatment is still visible there.
     """
-    seen = set()
-    unique = []
+    unique = {}
     for slot in slots:
         key = (
             slot.clinic_name,
@@ -86,11 +85,16 @@ def _dedupe_slots(slots: list) -> list:
             slot.start_at,
             slot.duration_minutes,
         )
-        if key in seen:
-            continue
-        seen.add(key)
-        unique.append(slot)
-    return unique
+        if key not in unique or (
+            _is_first_visit(slot) and not _is_first_visit(unique[key])
+        ):
+            unique[key] = slot
+    return list(unique.values())
+
+
+def _is_first_visit(slot) -> bool:
+    name = slot.treatment_name.lower()
+    return any(keyword in name for keyword in FIRST_VISIT_KEYWORDS)
 
 
 @app.get("/api/cities")

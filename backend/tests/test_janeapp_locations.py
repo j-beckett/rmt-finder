@@ -120,7 +120,54 @@ def test_openings_are_requested_for_the_discovered_location(monkeypatch):
 
     openings_calls = [u for u in session.requested if "/api/v2/openings/" in u]
     assert openings_calls and all("location_id=2&" in u for u in openings_calls)
-    assert [(s.rmt_name, s.booking_url) for s in slots] == [("Kari Lund", BASE)]
+    assert [s.rmt_name for s in slots] == ["Kari Lund"]
+
+
+def test_booking_url_opens_the_rmts_calendar_for_that_treatment(monkeypatch):
+    monkeypatch.setattr(JaneAppAdapter, "_is_within_lookahead", lambda self, s: True)
+    session = FakeSession(
+        {BASE: booking_page(2)},
+        openings=[{"start_at": "2026-10-09T10:00:00-07:00", "staff_member_id": 7}],
+    )
+    monkeypatch.setattr("scraper.adapters.janeapp.make_session", lambda: session)
+
+    clinic = jane_rmt("Kari Lund", "clinic", slug="clinic")
+    slots = JaneAppAdapter().fetch_availability(clinic)
+
+    assert [s.booking_url for s in slots] == [f"{BASE}#/staff_member/7/treatment/3"]
+
+
+def test_booking_url_stays_on_the_configured_location(monkeypatch):
+    monkeypatch.setattr(JaneAppAdapter, "_is_within_lookahead", lambda self, s: True)
+    location_page = f"{BASE}/locations/westshore/book"
+    session = FakeSession(
+        {BASE: home_with_links("saanichton", "westshore"), location_page: booking_page(4)},
+        openings=[{"start_at": "2026-10-09T10:00:00-07:00", "staff_member_id": 7}],
+    )
+    monkeypatch.setattr("scraper.adapters.janeapp.make_session", lambda: session)
+
+    clinic = jane_rmt("Natural Balance", "clinic", slug="clinic", location="westshore")
+    slots = JaneAppAdapter().fetch_availability(clinic)
+
+    assert [s.booking_url for s in slots] == [
+        f"{location_page}#/staff_member/7/treatment/3"
+    ]
+
+
+def test_booking_url_falls_back_to_the_treatment_when_the_rmt_is_unknown(
+    monkeypatch,
+):
+    monkeypatch.setattr(JaneAppAdapter, "_is_within_lookahead", lambda self, s: True)
+    session = FakeSession(
+        {BASE: booking_page(2)},
+        openings=[{"start_at": "2026-10-09T10:00:00-07:00"}],
+    )
+    monkeypatch.setattr("scraper.adapters.janeapp.make_session", lambda: session)
+
+    clinic = jane_rmt("Kari Lund", "clinic", slug="clinic")
+    slots = JaneAppAdapter().fetch_availability(clinic)
+
+    assert [s.booking_url for s in slots] == [f"{BASE}#/discipline/1/treatment/3"]
 
 
 def test_slots_carry_the_clinic_slug(monkeypatch):

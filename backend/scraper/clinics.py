@@ -79,6 +79,7 @@ EXCLUDED_TREATMENT_KEYWORDS = [
     "abdominal",
     "c-section",
     "c- section",
+    "surgical",
     "child",
     "return visit",
     "va massage",
