@@ -86,7 +86,10 @@ html {
     overflow: hidden;
     background: var(--color-card);
   }
-  /* Full width on phones, lining up with the day pills; capped above. */
+  /* Phones: same width and cap as the day pill row, so they line up. */
+  .time-seg {
+    max-width: 28rem;
+  }
   @media (min-width: 640px) {
     .time-seg {
       max-width: 22rem;

@@ -124,13 +124,14 @@ export function Availability({
       )}
 
       <div className="mt-8">
-        <div role="group" aria-label="Time window" className="flex sm:flex-wrap gap-2.5">
+        <div role="group" aria-label="Time window" className="flex sm:flex-wrap gap-2.5 max-[359px]:gap-1.5 max-sm:max-w-md">
           {pills.map(({ key, label, shortLabel }) => (
             <button
               key={key}
               type="button"
-              // Phones: one row that stretches to the width, never wraps.
-              className="filter-pill max-sm:flex-auto max-sm:px-2"
+              // Phones: one row that stretches to the width (capped), never
+              // wraps; tightest below 360px (iPhone Display Zoom is 320).
+              className="filter-pill whitespace-nowrap max-sm:flex-auto max-sm:px-2 max-[359px]:px-1 max-[359px]:tracking-normal"
               aria-pressed={key === activeWindow}
               onClick={() => onWindowChange(key)}
             >
