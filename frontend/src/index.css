@@ -69,13 +69,6 @@ html {
       box-shadow 80ms ease,
       background 80ms ease;
   }
-  /* Phones: tighter so all four day pills fit one row down to 360px. */
-  @media (max-width: 639px) {
-    .filter-pill {
-      padding-inline: 0.625rem;
-      letter-spacing: 0.04em;
-    }
-  }
   .filter-pill:hover {
     transform: translate(-1px, -1px);
     box-shadow: 3px 3px 0 var(--color-forest);
@@ -88,11 +81,16 @@ html {
   /* Time-of-day bar: one joined control, so it reads apart from the day pills. */
   .time-seg {
     display: flex;
-    max-width: 22rem;
     border: 2px solid var(--color-forest);
     border-radius: 999px;
     overflow: hidden;
     background: var(--color-card);
+  }
+  /* Full width on phones, lining up with the day pills; capped above. */
+  @media (min-width: 640px) {
+    .time-seg {
+      max-width: 22rem;
+    }
   }
   .time-seg button {
     flex: 1;

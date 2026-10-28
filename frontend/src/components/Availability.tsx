@@ -124,12 +124,13 @@ export function Availability({
       )}
 
       <div className="mt-8">
-        <div role="group" aria-label="Time window" className="flex flex-wrap gap-2 sm:gap-2.5">
+        <div role="group" aria-label="Time window" className="flex sm:flex-wrap gap-2.5">
           {pills.map(({ key, label, shortLabel }) => (
             <button
               key={key}
               type="button"
-              className="filter-pill"
+              // Phones: one row that stretches to the width, never wraps.
+              className="filter-pill max-sm:flex-auto max-sm:px-2"
               aria-pressed={key === activeWindow}
               onClick={() => onWindowChange(key)}
             >
