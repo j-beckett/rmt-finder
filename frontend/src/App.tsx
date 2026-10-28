@@ -10,7 +10,7 @@ import {
 import { pageView } from '@/lib/analytics'
 import { cityFromSearch, searchWithCity } from '@/lib/city'
 import { send } from '@/lib/track'
-import type { SlotWindow } from '@/lib/slots'
+import type { SlotWindow, TimeOfDay } from '@/lib/slots'
 import { Availability } from '@/components/Availability'
 import { CityMenu } from '@/components/CityMenu'
 import { Footer } from '@/components/Footer'
@@ -27,6 +27,7 @@ function App() {
   const [cities, setCities] = useState<City[]>([])
   const [state, setState] = useState<State>({ status: 'loading' })
   const [activeWindow, setActiveWindow] = useState<SlotWindow>(0)
+  const [activeTime, setActiveTime] = useState<TimeOfDay | null>(null)
 
   useEffect(() => {
     // Ignore a slow response for a city the user has already switched away from.
@@ -121,6 +122,8 @@ function App() {
             data={state.data}
             activeWindow={activeWindow}
             onWindowChange={setActiveWindow}
+            activeTime={activeTime}
+            onTimeChange={setActiveTime}
           />
         )}
       </main>

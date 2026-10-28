@@ -54,6 +54,21 @@ export function filterSlotsByWindow(
   return slots.filter((slot) => slotDate(slot) === target)
 }
 
+export type TimeOfDay = 'morning' | 'afternoon' | 'evening'
+
+/** Bucket by clinic-local start hour: before noon, noon to 5pm, 5pm on. */
+export function timeOfDay(slot: Slot): TimeOfDay {
+  const hour = Number(slot.start_at.slice(11, 13))
+  if (hour < 12) return 'morning'
+  return hour < 17 ? 'afternoon' : 'evening'
+}
+
+/** Slots in one time-of-day bucket; null means no time filter. */
+export function filterSlotsByTime(slots: Slot[], time: TimeOfDay | null): Slot[] {
+  if (time === null) return slots
+  return slots.filter((slot) => timeOfDay(slot) === time)
+}
+
 /** Group an already-sorted slot list by clinic-local date, preserving order. */
 export function groupSlotsByDay(
   slots: Slot[],

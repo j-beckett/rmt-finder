@@ -78,6 +78,59 @@ html {
     box-shadow: 3px 3px 0 var(--color-forest);
   }
 
+  /* Time-of-day bar: one joined control, so it reads apart from the day pills. */
+  .time-seg {
+    display: flex;
+    max-width: 22rem;
+    border: 2px solid var(--color-forest);
+    border-radius: 999px;
+    overflow: hidden;
+    background: var(--color-card);
+  }
+  .time-seg button {
+    flex: 1;
+    /* Same height as the day pills, so the two rows read as one set. */
+    min-height: 2.125rem;
+    font-size: 0.78rem;
+    font-weight: 700;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    color: var(--color-forest);
+    background: transparent;
+    border: 0;
+    border-right: 2px solid var(--color-forest);
+    cursor: pointer;
+    transition: background 80ms ease;
+  }
+  .time-seg button:last-child {
+    border-right: 0;
+  }
+  .time-seg button:hover {
+    background: var(--color-cream);
+  }
+  .time-seg button[aria-pressed="true"] {
+    background: var(--color-lime);
+  }
+  .time-seg button:focus-visible {
+    outline: 3px solid var(--color-forest);
+    outline-offset: -5px;
+  }
+
+  /* "Clear time": a text button, lime underline like the city heading. */
+  .text-button {
+    font-size: 0.875rem;
+    font-weight: 600;
+    color: var(--color-forest);
+    background: transparent;
+    border: 0;
+    padding: 0.25rem 0;
+    cursor: pointer;
+    text-decoration: underline;
+    text-decoration-color: var(--color-lime);
+    text-decoration-thickness: 3px;
+    text-underline-offset: 3px;
+  }
+
   /* City dropdown set in the heading: reads as the title, lime underline marks it tappable. */
   /* City switcher: cream card styling. Lime stays reserved for
      "active"/"book" so a utility menu doesn't shout. */

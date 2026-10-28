@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { bookClick, isTrackableClick, optedOut, pageView } from '../analytics'
+import { bookClick, isTrackableClick, optedOut, pageView, timeFilterPick } from '../analytics'
 import type { Slot } from '../slots'
 
 function ready(city: string, city_name: string) {
@@ -138,5 +138,15 @@ describe('optedOut', () => {
       expect(optedOut(search, blocked)).toBe(false)
       expect(optedOut(search, () => throwing)).toBe(false)
     }
+  })
+})
+
+describe('timeFilterPick', () => {
+  it('is an event keyed by the bucket', () => {
+    expect(timeFilterPick('evening')).toEqual({
+      path: 'filter/time/evening',
+      title: 'Time filter: evening',
+      event: true,
+    })
   })
 })

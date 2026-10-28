@@ -1,4 +1,4 @@
-import type { Slot } from './slots'
+import type { Slot, TimeOfDay } from './slots'
 
 /** One GoatCounter hit, in count()'s own shape. */
 export interface Hit {
@@ -30,6 +30,11 @@ export function pageView(state: ViewState, search: string): Hit | null {
 export function bookClick(slot: Slot): Hit | null {
   if (!slot.clinic_slug) return null
   return { path: `book/${slot.clinic_slug}`, title: slot.clinic_name, event: true }
+}
+
+/** A time-of-day pick; clears aren't counted. */
+export function timeFilterPick(time: TimeOfDay): Hit {
+  return { path: `filter/time/${time}`, title: `Time filter: ${time}`, event: true }
 }
 
 /** Whether a click/auxclick on a slot card counts as a Book click. */

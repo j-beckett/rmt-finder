@@ -4,6 +4,8 @@ import {
   filterSlotsByWindow,
   groupSlotsByDay,
   sortSlots,
+  filterSlotsByTime,
+  timeOfDay,
   type Slot,
 } from '../slots'
 
@@ -115,5 +117,31 @@ describe('groupSlotsByDay', () => {
 
   it('returns no groups for no slots', () => {
     expect(groupSlotsByDay([])).toEqual([])
+  })
+})
+
+describe('timeOfDay', () => {
+  it('buckets by clinic-local hour: noon and 5pm start the later bucket', () => {
+    const at = (time: string) =>
+      timeOfDay(makeSlot({ start_at: `2026-07-10T${time}:00-07:00` }))
+    expect([at('11:59'), at('12:00'), at('16:59'), at('17:00')]).toEqual([
+      'morning',
+      'afternoon',
+      'afternoon',
+      'evening',
+    ])
+  })
+})
+
+describe('filterSlotsByTime', () => {
+  const morning = makeSlot({ start_at: '2026-07-10T09:00:00-07:00' })
+  const evening = makeSlot({ start_at: '2026-07-10T18:00:00-07:00' })
+
+  it('keeps only the chosen bucket', () => {
+    expect(filterSlotsByTime([morning, evening], 'evening')).toEqual([evening])
+  })
+
+  it('keeps everything when no time is chosen', () => {
+    expect(filterSlotsByTime([morning, evening], null)).toEqual([morning, evening])
   })
 })

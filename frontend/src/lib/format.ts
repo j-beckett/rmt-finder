@@ -1,4 +1,4 @@
-import { addDays } from './slots'
+import { addDays, type SlotWindow, type TimeOfDay } from './slots'
 
 /**
  * Clinic-local display helpers.
@@ -86,6 +86,40 @@ export function formatPillLabel(
   // Composed by hand: Intl's weekday+day combo comes out as "15 Wednesday".
   const name = date.toLocaleDateString('en-US', { weekday, timeZone: 'UTC' })
   return `${name} ${day}`
+}
+
+const TIME_RANGES: Record<TimeOfDay, string> = {
+  morning: 'before noon',
+  afternoon: 'noon to 5pm',
+  evening: '5pm on',
+}
+
+/** Count line under the time bar: "8 evening openings · 5pm on". */
+export function timeFilterSummary(count: number, time: TimeOfDay): string {
+  return `${count} ${time} ${count === 1 ? 'opening' : 'openings'} · ${TIME_RANGES[time]}`
+}
+
+/** Empty state when the time filter, not the day, emptied the list. */
+export function timeEmptyState(
+  time: TimeOfDay,
+  otherCount: number,
+  window: SlotWindow,
+  today: string,
+  windowLabel: string,
+): { title: string; body: string } {
+  const when =
+    window === 'all'
+      ? `in the next ${windowLabel}`
+      : window === 0
+        ? 'today'
+        : window === 1
+          ? 'tomorrow'
+          : `on ${formatSlotDate(addDays(today, window)).split(',')[0]}`
+  const others =
+    otherCount === 1
+      ? 'There is 1 opening at another time'
+      : `There are ${otherCount} openings at other times`
+  return { title: `No ${time} openings ${when}`, body: `${others} ${when}.` }
 }
 
 /** "how long ago" line for the served run, e.g. "12 minutes ago". */

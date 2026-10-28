@@ -1,9 +1,25 @@
 import { SCRAPE_INTERVAL_MINUTES, type AvailabilityResponse } from '@/lib/api'
 import { isStale, latestCheckFailed, quietNote } from '@/lib/freshness'
-import { formatPillLabel, formatSlotDate, spellOut, timeAgo, todayInZone } from '@/lib/format'
-import { addDays, filterSlotsByWindow, sortSlots, type SlotWindow } from '@/lib/slots'
+import {
+  formatPillLabel,
+  formatSlotDate,
+  spellOut,
+  timeAgo,
+  timeEmptyState,
+  timeFilterSummary,
+  todayInZone,
+} from '@/lib/format'
+import {
+  addDays,
+  filterSlotsByTime,
+  filterSlotsByWindow,
+  sortSlots,
+  type SlotWindow,
+  type TimeOfDay,
+} from '@/lib/slots'
 import { MetaLine } from '@/components/MetaLine'
 import { SlotGroups } from '@/components/SlotList'
+import { TimeFilter } from '@/components/TimeFilter'
 
 // Fallback only for a stale/cached API that predates the envelope's timezone
 // field; the current backend always sends it.
@@ -17,10 +33,14 @@ export function Availability({
   data,
   activeWindow,
   onWindowChange,
+  activeTime,
+  onTimeChange,
 }: {
   data: AvailabilityResponse
   activeWindow: SlotWindow
   onWindowChange: (window: SlotWindow) => void
+  activeTime: TimeOfDay | null
+  onTimeChange: (time: TimeOfDay | null) => void
 }) {
   if (data.scraped_at === null) {
     return (
@@ -47,7 +67,8 @@ export function Availability({
     quiet === null && isStale(data.scraped_at, nowMs, SCRAPE_INTERVAL_MINUTES)
   const checkFailed = latestCheckFailed(data.scraped_at, data.latest_attempt_at)
   const all = sortSlots(data.slots)
-  const shown = filterSlotsByWindow(all, activeWindow, today)
+  const dayShown = filterSlotsByWindow(all, activeWindow, today)
+  const shown = filterSlotsByTime(dayShown, activeTime)
   const windowDays = data.window_days > 0 ? data.window_days : FALLBACK_WINDOW_DAYS
   // One pill per collected day plus "All", so every day is one tap away and
   // the pill row grows with the envelope's window. Weekday pills carry a
@@ -118,6 +139,19 @@ export function Availability({
           ))}
         </div>
         {caption && <p className="mt-4 text-sm text-moss">{caption}</p>}
+        <div className="mt-5">
+          <TimeFilter active={activeTime} onChange={onTimeChange} />
+        </div>
+        {activeTime && shown.length > 0 && (
+          <div className="mt-3 flex items-center justify-between gap-4 max-w-md">
+            <p className="text-sm text-moss">
+              {timeFilterSummary(shown.length, activeTime)}
+            </p>
+            <button type="button" className="text-button" onClick={() => onTimeChange(null)}>
+              Clear time
+            </button>
+          </div>
+        )}
       </div>
 
       <div className="mt-9">
@@ -128,6 +162,12 @@ export function Availability({
             slots={shown}
             today={today}
             showDayBadges={activeWindow === 'all'}
+          />
+        ) : activeTime && dayShown.length > 0 ? (
+          // The time filter emptied the list; the day itself has openings.
+          <TimeEmpty
+            {...timeEmptyState(activeTime, dayShown.length, activeWindow, today, windowLabel)}
+            onClear={() => onTimeChange(null)}
           />
         ) : all.length > 0 ? (
           <div className="empty-box">
@@ -165,5 +205,17 @@ export function Availability({
         )}
       </div>
     </>
+  )
+}
+
+function TimeEmpty({ title, body, onClear }: { title: string; body: string; onClear: () => void }) {
+  return (
+    <div className="empty-box">
+      <h2 className="display text-2xl mb-2">{title}</h2>
+      <p className="text-moss text-sm mb-5">{body}</p>
+      <button type="button" className="filter-pill" aria-pressed="false" onClick={onClear}>
+        Clear time
+      </button>
+    </div>
   )
 }

@@ -7,6 +7,8 @@ import {
   formatSlotTime,
   spellOut,
   timeAgo,
+  timeEmptyState,
+  timeFilterSummary,
   todayInZone,
 } from '../format'
 
@@ -45,6 +47,39 @@ describe('todayInZone', () => {
     // 2026-07-14 08:00 UTC is 2026-07-14 (1 AM PDT) in Vancouver.
     const instant = new Date('2026-07-14T08:00:00Z')
     expect(todayInZone('America/Vancouver', instant)).toBe('2026-07-14')
+  })
+})
+
+describe('timeFilterSummary', () => {
+  it('counts the bucket and states its hours', () => {
+    expect(timeFilterSummary(8, 'evening')).toBe('8 evening openings · 5pm on')
+    expect(timeFilterSummary(1, 'morning')).toBe('1 morning opening · before noon')
+    expect(timeFilterSummary(3, 'afternoon')).toBe('3 afternoon openings · noon to 5pm')
+  })
+})
+
+describe('timeEmptyState', () => {
+  // 2026-07-08 is a Wednesday, so offset 2 is Friday.
+  const today = '2026-07-08'
+
+  it('names the bucket and the day, and counts what the day still has', () => {
+    expect(timeEmptyState('evening', 12, 0, today, 'three days')).toEqual({
+      title: 'No evening openings today',
+      body: 'There are 12 openings at other times today.',
+    })
+  })
+
+  it('reads naturally for tomorrow, a weekday, and the whole window', () => {
+    expect(timeEmptyState('morning', 1, 1, today, 'three days')).toEqual({
+      title: 'No morning openings tomorrow',
+      body: 'There is 1 opening at another time tomorrow.',
+    })
+    expect(timeEmptyState('afternoon', 4, 2, today, 'three days').title).toBe(
+      'No afternoon openings on Friday',
+    )
+    expect(timeEmptyState('evening', 30, 'all', today, 'three days').title).toBe(
+      'No evening openings in the next three days',
+    )
   })
 })
 

@@ -44,11 +44,13 @@ const envelope = (over = {}) => ({
 })
 
 // The app owns the active pill in state; previews do the same so pills stay clickable.
-function Page({ data, start = 0 }: { data: ReturnType<typeof envelope>; start?: number | 'all' }) {
+type Time = 'morning' | 'afternoon' | 'evening' | null
+function Page({ data, start = 0, time: startTime = null }: { data: ReturnType<typeof envelope>; start?: number | 'all'; time?: Time }) {
   const [win, setWin] = useState<number | 'all'>(start)
+  const [time, setTime] = useState<Time>(startTime)
   return (
     <div className="mx-auto max-w-3xl px-4 py-6">
-      <Availability data={data} activeWindow={win} onWindowChange={setWin} />
+      <Availability data={data} activeWindow={win} onWindowChange={setWin} activeTime={time} onTimeChange={setTime} />
     </div>
   )
 }
