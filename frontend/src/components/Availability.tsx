@@ -124,7 +124,7 @@ export function Availability({
       )}
 
       <div className="mt-8">
-        <div role="group" aria-label="Time window" className="flex flex-wrap gap-2.5">
+        <div role="group" aria-label="Time window" className="flex flex-wrap gap-2 sm:gap-2.5">
           {pills.map(({ key, label, shortLabel }) => (
             <button
               key={key}
